@@ -4,14 +4,16 @@ from random import shuffle
 def test_creation_empty():
     v = Vector()
     assert len(v) == 0
+    w = Vector([])
+    assert len(w) == 0
 
 
-"""
 def test_creation_non_empty():
     v = Vector([1, 2, 3])
     assert len(v) == 3
 
 
+"""
 def test_indexing_pos():
     v = Vector([1, 2, 3])
     assert v[0] == 1
