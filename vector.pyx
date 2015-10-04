@@ -81,12 +81,75 @@ cdef class PersistentVector:
 
 
     def cons(self, val):
-        cdef list newtail
+        cdef:
+            list newtail
+            Node newroot, tailnode
+            int newshift
         if self._cnt - _tailoff(self._cnt) < NN:
             newtail = self._tail + [val]
             return PersistentVector(self._cnt + 1, self._shift, self._root, newtail)
-        raise NotImplementedError("more than %d elements not yet supported." % NN)
+        tailnode = Node(self._tail)
+        newshift = self._shift
+        if (self._cnt >> 5) > (1 << self._shift):
+            newroot = Node()
+            newroot._array[0] = self._root
+            newroot._array[1] = self._new_path(self._shift, tailnode)
+            newshift += SHIFT
+        else:
+            newroot = self._push_tail(self._shift, self._root, tailnode)
+        return PersistentVector(self._cnt + 1, newshift, newroot, [val])
 
+
+    cdef Node _new_path(self, int level, Node node):
+        if not level:
+            return node
+        cdef Node ret = Node()
+        ret._array[0] = self._new_path(level - SHIFT, node)
+        return ret
+
+
+    cdef Node _push_tail(self, int level, Node parent, Node tailnode):
+        cdef int subidx = ((self._cnt - 1) >> level) & 0x01f
+        cdef Node ret = Node(parent._array[:])
+        cdef Node node_to_insert, child
+        if level == SHIFT:
+            node_to_insert = tailnode
+        else:
+            child = parent._array[subidx]
+            if child is not None:
+                node_to_insert = self._push_tail(level-SHIFT, child, tailnode) 
+            else:
+                node_to_insert = self._new_path(level-SHIFT, tailnode)
+        ret._array[subidx] = node_to_insert
+        return ret
+
+
+    def assoc(self, int i, val):
+        cdef list newtail
+        if 0 <= i < self._cnt:
+            if i >= _tailoff(self._cnt):
+                newtail = self._tail[:]
+                newtail[i & 0x01f] = val
+                return PersistentVector(self._cnt, self._shift, self._root, newtail)
+            return PersistentVector(self._cnt,
+                                    self._shift,
+                                    self._do_assoc(self._shift, self._root, i, val),
+                                    self._tail)
+        raise IndexError()
+
+
+    cdef Node _do_assoc(self, int level, Node node, int i, val):
+        cdef Node ret = Node(node._array[:])
+        cdef int subidx
+        if not level:
+            ret._array[i & 0x01f] = val
+        else:
+            subidx = (i >> level) & 0x01f
+            ret._array[subidx] = self._do_assoc(level - SHIFT,
+                                                <Node>(node._array[subidx]),
+                                                i,
+                                                val)
+        return ret
 
 
 cdef Node editable_root(Node root):

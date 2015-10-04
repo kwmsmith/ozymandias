@@ -13,7 +13,7 @@ def test_creation_non_empty():
     assert len(v) == 3
 
 
-def test_conj():
+def test_cons():
     # Like list.append, except returns new vector w/ structural sharing.
     v0 = vec()
     assert len(v0) == 0
@@ -23,11 +23,41 @@ def test_conj():
     assert v1[0] == 1
 
 
+def test_cons_128():
+    N = 128
+    v = vec()
+    for i in range(N):
+        v = v.cons(i)
+    assert len(v) == N
+    for i in range(N):
+        assert v[i] == i
+
+def test_cons_1048576():
+    N = 1048576
+    v = vec()
+    for i in xrange(N):
+        v = v.cons(i)
+    assert len(v) == N
+    for i in xrange(N):
+        assert v[i] == i
+
+
 def test_indexing_pos():
     v = vec([1, 2, 3])
     assert v[0] == 1
     assert v[1] == 2
     assert v[2] == 3
+    
+
+def test_assoc():
+    a = vec(range(31))
+    b = a.assoc(0, 10)
+    assert a[0] == 0
+    assert b[0] == 10
+    assert a[1] == b[1]
+    assert a[2] == b[2]
+    c = b.assoc(1, 5)
+    assert c[1] == 5
 
 """
 
@@ -52,14 +82,6 @@ def test_equality_with_list_and_tuple():
     assert t == v
 
 
-def test_assoc():
-    v0 = vec([1, 2, 3])
-    v1 = v0.assoc(0, 10)
-    assert v0 == [1, 2, 3]
-    assert v1 == [10, 2, 3]
-
-    v2 = v1.assoc(1, 5)
-    assert v2 == [10, 5, 3]
 
 
 def test_pop():
