@@ -73,7 +73,19 @@ def test_iteration_small():
         b += i
     assert b == N * (N - 1) / 2
 
+def test_containment():
+    N = 20
+    a = vec(range(N))
+    for i in range(N):
+        assert i in a
+    assert 100 not in a
+
 """
+
+def test_creation_from_generator():
+    v = vec(i for i in range(10))
+    assert len(v) == 10
+
 
 def test_big_vector():
     # TODO: test a vector that pushes the limits of len(), etc.

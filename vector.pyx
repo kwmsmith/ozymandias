@@ -153,8 +153,16 @@ cdef class PersistentVector:
                                                 val)
         return ret
 
+
     def __iter__(self):
         return ChunkedIter(self)
+
+
+    def __contains__(self, obj):
+        for v in self:
+            if obj == v:
+                return True
+        return False
 
 
 cdef Node editable_root(Node root):
