@@ -1,3 +1,5 @@
+import pytest
+
 from vector import vec
 from random import shuffle
 
@@ -79,6 +81,25 @@ def test_containment():
     for i in range(N):
         assert i in a
     assert 100 not in a
+
+def test_count():
+    ll = [1, 2, 2, 3, 3, 3]
+    shuffle(ll)
+    a = vec(ll)
+    assert a.count(1) == ll.count(1)
+    assert a.count(2) == ll.count(2)
+    assert a.count(3) == ll.count(3)
+    assert a.count('a') == ll.count('a')
+
+def test_index():
+    ll = range(20)
+    shuffle(ll)
+    v = vec(ll)
+    for i in ll:
+        assert ll.index(i) == v.index(i)
+    with pytest.raises(ValueError):
+        v.index(30)
+
 
 """
 

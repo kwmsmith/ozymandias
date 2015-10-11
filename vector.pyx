@@ -165,6 +165,27 @@ cdef class PersistentVector:
         return False
 
 
+    def index(self, item, start=None, stop=None):
+        cdef:
+            int i
+            int istart = start or 0
+            int istop = stop or len(self)
+        for i in range(istart, istop):
+            # TODO: improve performance, shouldn't go through __getitem__.
+            if self[i] == item:
+                return i
+        raise ValueError("%s is not in vec." % item)
+
+
+    def count(self, value):
+        cdef:
+            int c = 0
+        for v in self:
+            if v == value:
+                c += 1
+        return c
+
+
 cdef Node editable_root(Node root):
     return Node(root._array[:])
 
