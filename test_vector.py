@@ -34,6 +34,7 @@ def test_cons_128():
     for i in range(N):
         assert v[i] == i
 
+
 def test_cons_1048576():
     N = 1048576
     v = vec()
@@ -62,10 +63,12 @@ def test_assoc():
     c = b.assoc(1, 5)
     assert c[1] == 5
 
+
 def test_iteration_empty():
     a = vec()
     for i in a:
         assert False
+
 
 def test_iteration_small():
     N = 31
@@ -75,12 +78,14 @@ def test_iteration_small():
         b += i
     assert b == N * (N - 1) / 2
 
+
 def test_containment():
     N = 20
     a = vec(range(N))
     for i in range(N):
         assert i in a
     assert 100 not in a
+
 
 def test_count():
     ll = [1, 2, 2, 3, 3, 3]
@@ -90,6 +95,7 @@ def test_count():
     assert a.count(2) == ll.count(2)
     assert a.count(3) == ll.count(3)
     assert a.count('a') == ll.count('a')
+
 
 def test_index():
     ll = range(20)
@@ -101,8 +107,19 @@ def test_index():
         v.index(30)
 
 
-"""
+def test_slice():
+    ll = range(20)
+    l2 = ll[5:10]
+    v = vec(ll)
+    v2 = v[5:10]
+    assert len(l2) == len(v2)
+    for a, b in zip(l2, v2):
+        assert a == b
+    with pytest.raises(NotImplementedError):
+        v[::2]
 
+
+"""
 def test_creation_from_generator():
     v = vec(i for i in range(10))
     assert len(v) == 10

@@ -63,9 +63,24 @@ cdef class PersistentVector:
     def __len__(self):
         return self._cnt
 
-    def __getitem__(self, i):
+    cdef _get_item(self, int i):
         cdef list node = self.array_for(i)
         return node[i & 0x01f]
+
+    cdef _get_slice(self, slice sl):
+        cdef:
+            int start, stop, stride
+        start, stop, stride = sl.indices(len(self))
+        if stride != 1:
+            raise NotImplementedError("non unitary stride not yet supported.")
+        return SubVector(self, start, stop)
+
+    def __getitem__(self, i_or_slice):
+        if isinstance(i_or_slice, int):
+            return self._get_item(i_or_slice)
+        elif isinstance(i_or_slice, slice):
+            return self._get_slice(i_or_slice)
+
 
     cdef list array_for(self, int i):
         cdef Node node
@@ -223,6 +238,40 @@ cdef class ChunkedIter:
         return ret
 
 
+cdef class SubVector:
+
+    cdef:
+        PersistentVector _vec
+        int _start
+        int _end
+
+    def __init__(self, vec, int start, int end):
+        if isinstance(vec, PersistentVector):
+            self._vec = vec
+        elif isinstance(vec, SubVector):
+            self._vec = vec._vec
+            start += vec._start
+            end += vec._start
+        self._start = start
+        self._end = end
+
+    def __getitem__(self, index):
+        if self._start + index >= self._end or index < 0:
+            raise IndexError()
+        return self._vec[self._start + index]
+
+    def assoc(self, int i, val):
+        if self._start + i > self._end:
+            raise IndexError()
+        return SubVector(self._vec.assoc(self._start + i, val), self._start, self._end)
+
+    def __len__(self):
+        return self._end - self._start
+
+    def cons(self, val):
+        return SubVector(self._vec.assoc(self._end, val), self._start, self._end + 1)
+
+"""
 cdef class TransientVector:
 
     cdef:
@@ -274,3 +323,4 @@ cdef class TransientVector:
     def persistent(self):
         self.ensure_editable()
         assert False
+"""
