@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 DEF SHIFT = 5
 DEF NN = 2**SHIFT
 
@@ -62,10 +64,10 @@ cdef class PersistentVector:
         return self._cnt
 
     def __getitem__(self, i):
-        cdef list node = self._array_for(i)
+        cdef list node = self.array_for(i)
         return node[i & 0x01f]
 
-    cdef list _array_for(self, int i):
+    cdef list array_for(self, int i):
         cdef Node node
         cdef int level
         if 0 <= i < self._cnt:
@@ -151,12 +153,45 @@ cdef class PersistentVector:
                                                 val)
         return ret
 
+    def __iter__(self):
+        return ChunkedIter(self)
+
 
 cdef Node editable_root(Node root):
     return Node(root._array[:])
 
 cdef list editable_tail(list tail):
     return tail[:]
+
+
+cdef class ChunkedIter:
+
+    cdef:
+        PersistentVector _vec
+        list _chunk
+        int _i, _offset
+
+    def __cinit__(self, vec):
+        self._vec = vec
+        self._i = 0 # global index into entire vec.
+        self._offset = 0 # local index into chunk.
+        if len(self._vec):
+            self._chunk = self._vec.array_for(self._i)
+        else:
+            self._chunk = []
+
+    def __next__(self):
+        if self._i >= len(self._vec):
+            raise StopIteration()
+        ret = self._chunk[self._offset]
+        self._i += 1
+        if self._i < len(self._vec):
+            if self._offset + 1 < len(self._chunk):
+                self._offset += 1
+            else:
+                self._chunk = self._vec.array_for(self._i)
+                self._offset = 0
+        return ret
 
 
 cdef class TransientVector:

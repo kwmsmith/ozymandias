@@ -50,6 +50,7 @@ def test_indexing_pos():
     
 
 def test_assoc():
+    # TODO: FIXME: test with a big vector, bigger than 32, 32**2, 32**3, etc...
     a = vec(range(31))
     b = a.assoc(0, 10)
     assert a[0] == 0
@@ -58,6 +59,19 @@ def test_assoc():
     assert a[2] == b[2]
     c = b.assoc(1, 5)
     assert c[1] == 5
+
+def test_iteration_empty():
+    a = vec()
+    for i in a:
+        assert False
+
+def test_iteration_small():
+    N = 31
+    a = vec(range(N))
+    b = 0
+    for i in a:
+        b += i
+    assert b == N * (N - 1) / 2
 
 """
 
