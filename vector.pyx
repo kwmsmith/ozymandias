@@ -35,7 +35,7 @@ def vec(*args):
         return PersistentVector(*args)
 
 
-cdef class PersistentVector(APersistentVector):
+cdef class PersistentVector:
 
     cdef:
         int _cnt # TODO: NOTE: should this be a py_ssize_t or somesuch?
