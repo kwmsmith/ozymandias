@@ -34,20 +34,6 @@ def vec(*args):
     if len(args) == 4:
         return PersistentVector(*args)
 
-cdef class APersistentVector:
-
-    cdef:
-        long _hash
-
-    def __str__(self):
-        # TODO: implement, with some intelligence for really big vectors...
-        return "TODO"
-
-    # TODO: should we implement __iter__ here instead on PersistentVector?
-
-    def __richcmp__(lhs, rhs, int op):
-        if op == 2: # equality (==) test.
-
 
 cdef class PersistentVector(APersistentVector):
 
