@@ -119,6 +119,16 @@ def test_slice():
         v[::2]
 
 
+def test_str_repr():
+    ll = range(20)
+    shuffle(ll)
+    v = vec(ll)
+    assert "vec(%s)" % str(ll) == str(v)
+    assert str(v) == repr(v)
+    assert str(v[:]) == str(v)
+    assert str(vec()) == "vec()"
+
+
 """
 def test_creation_from_generator():
     v = vec(i for i in range(10))

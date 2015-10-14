@@ -35,7 +35,25 @@ def vec(*args):
         return PersistentVector(*args)
 
 
-cdef class PersistentVector:
+cdef class APersistentVector:
+
+    cdef int _hash
+
+    def __repr__(self):
+        if len(self):
+            strs = []
+            for item in self:
+                strs.append(repr(item))
+            return "vec([%s])" % ", ".join(strs)
+        else:
+            return "vec()"
+
+
+    def __str__(self):
+        return repr(self)
+
+
+cdef class PersistentVector(APersistentVector):
 
     cdef:
         int _cnt # TODO: NOTE: should this be a py_ssize_t or somesuch?
@@ -238,8 +256,11 @@ cdef class ChunkedIter:
                 self._offset = 0
         return ret
 
+    def __iter__(self):
+        return self
 
-cdef class SubVector:
+
+cdef class SubVector(APersistentVector):
 
     cdef:
         PersistentVector _vec
