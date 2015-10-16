@@ -156,6 +156,12 @@ def test_hash():
         hash(v)
     
 
+def test_listify_and_tupleify():
+    assert list(vec(range(20))) == range(20)
+    assert list(vec()) == []
+    assert tuple(vec(range(20))) == tuple(range(20))
+    assert tuple(vec()) == ()
+
 
 """
 def test_creation_from_generator():
