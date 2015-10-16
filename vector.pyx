@@ -3,6 +3,7 @@ from __future__ import print_function
 DEF SHIFT = 5
 DEF NN = 2**SHIFT
 
+
 cdef class Node:
 
     cdef list _array
@@ -34,10 +35,16 @@ def vec(*args):
     if len(args) == 4:
         return PersistentVector(*args)
 
+DEF NULL_HASH = -1
+DEF UNHASHED = -2
+DEF SAFEHASH = -3
 
 cdef class APersistentVector:
 
-    cdef int _hash
+    cdef long _hash
+
+    def __cinit__(self):
+        self._hash = UNHASHED
 
     def __repr__(self):
         if len(self):
@@ -48,8 +55,10 @@ cdef class APersistentVector:
         else:
             return "vec()"
 
+
     def __str__(self):
         return repr(self)
+
 
     def __richcmp__(x, y, int op):
         assert (isinstance(x, APersistentVector) or isinstance(y, APersistentVector))
@@ -71,6 +80,33 @@ cdef class APersistentVector:
             raise NotImplementedError()
 
 
+    def __contains__(self, obj):
+        for v in self:
+            if obj == v:
+                return True
+        return False
+
+
+    def index(self, item, start=None, stop=None):
+        cdef:
+            int i
+            int istart = start or 0
+            int istop = stop or len(self)
+        for i in range(istart, istop):
+            # TODO: improve performance, shouldn't go through __getitem__.
+            if self[i] == item:
+                return i
+        raise ValueError("%s is not in vec." % item)
+
+
+    def count(self, value):
+        cdef:
+            int c = 0
+        for v in self:
+            if v == value:
+                c += 1
+        return c
+
 
     cdef bint _equals(self, APersistentVector obj):
         if self is obj:
@@ -83,11 +119,63 @@ cdef class APersistentVector:
         return True
 
 
+    def __hash__(self):
+        cdef long y
+        cdef long x = 0x345678L
+        cdef Py_ssize_t ll = len(self)
+        cdef long mult = 1000003L
+        if self._hash != UNHASHED and self._hash != NULL_HASH:
+            return self._hash
+        if self._hash == NULL_HASH:
+            raise TypeError("vec contains unhashable type.")
+        elif self._hash == UNHASHED:
+            for ob in self:
+                try:
+                    y = hash(ob)
+                except TypeError:
+                    self._hash = NULL_HASH
+                    raise
+                x = (x ^ y) * mult
+                mult += <long>(82520L + ll + ll)
+            x += 97531L
+            if x == NULL_HASH or x == UNHASHED:
+                x = SAFEHASH
+            self._hash = x
+        return self._hash
+
+
+
+
+
+"""
+static long
+tuplehash(PyTupleObject *v)
+{
+    register long x, y;
+    register Py_ssize_t len = Py_SIZE(v);
+    register PyObject **p;
+    long mult = 1000003L;
+    x = 0x345678L;
+    p = v->ob_item;
+    while (--len >= 0) {
+        y = PyObject_Hash(*p++);
+        if (y == -1)
+            return -1;
+        x = (x ^ y) * mult;
+        /* the cast might truncate len; that doesn't change hash stability */
+        mult += (long)(82520L + len + len);
+    }
+    x += 97531L;
+    if (x == -1)
+        x = -2;
+    return x;
+}
+"""
 
 cdef class PersistentVector(APersistentVector):
 
     cdef:
-        int _cnt # TODO: NOTE: should this be a py_ssize_t or somesuch?
+        Py_ssize_t _cnt
         int _shift
         Node _root
         list _tail
@@ -223,32 +311,6 @@ cdef class PersistentVector(APersistentVector):
         return ChunkedIter(self)
 
 
-    def __contains__(self, obj):
-        for v in self:
-            if obj == v:
-                return True
-        return False
-
-
-    def index(self, item, start=None, stop=None):
-        cdef:
-            int i
-            int istart = start or 0
-            int istop = stop or len(self)
-        for i in range(istart, istop):
-            # TODO: improve performance, shouldn't go through __getitem__.
-            if self[i] == item:
-                return i
-        raise ValueError("%s is not in vec." % item)
-
-
-    def count(self, value):
-        cdef:
-            int c = 0
-        for v in self:
-            if v == value:
-                c += 1
-        return c
 
 
 cdef Node editable_root(Node root):
@@ -323,57 +385,3 @@ cdef class SubVector(APersistentVector):
 
     def cons(self, val):
         return SubVector(self._vec.assoc(self._end, val), self._start, self._end + 1)
-
-"""
-cdef class TransientVector:
-
-    cdef:
-        int _cnt
-        int _shift
-        Node _root
-        list _tail
-
-    # @classmethod
-    # def from_vector(cls, Vector v):
-        # self._cnt = v._cnt
-        # self._shift = v._shift
-        # self._root = editable_root(v._root)
-        # self._tail = editable_tail(v._tail)
-    
-    # def __init__(self, cnt, shift, Node root, list tail):
-        # self._cnt = 
-
-
-    def ensure_editable(self):
-        # TODO: detect when editing after making it persistent...
-        pass
-
-
-    def conj(self, val):
-        self.ensure_editable()
-        if self._cnt - _tailoff(self._cnt) < NN:
-            self._tail[self._cnt & 0x01f] = val
-            self._cnt += 1
-            return self
-        cdef Node newroot
-        cdef Node tailnode = Node(self._tail)
-        self._tail = [None] * NN
-        self._tail[0] = val
-        cdef int newshift = self._shift
-        if (self._cnt >> 5) > (1 << self._shift):
-            newroot = Node()
-            newroot._array[0] = self._root
-            newroot.array[1] = self.new_path(self._shift, tailnode)
-            newshift += 5
-        else:
-            newroot = self.push_tail(self._shift, self._root, tailnode)
-        self._root = newroot
-        self._shift = newshift
-        self._cnt += 1
-        return self
-
-
-    def persistent(self):
-        self.ensure_editable()
-        assert False
-"""

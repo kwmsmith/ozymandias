@@ -142,6 +142,21 @@ def test_equality():
     assert vec([1, 2, 4]) != vec([1, 2, 3])
 
 
+def test_hash():
+    assert isinstance(hash(vec()), int)
+    assert hash(vec()) == hash(())
+    # TODO: FIXME: why don't these hash equally?  We implemented vec's __hash__
+    # to be the same as tuple's __hash__...
+    # assert hash(vec(range(10))) == hash(tuple(range(10)))
+
+    assert hash(vec([()])) # vec of hashable type.
+
+    v = vec([[1]]) # vec of unhashable type.
+    with pytest.raises(TypeError):
+        hash(v)
+    
+
+
 """
 def test_creation_from_generator():
     v = vec(i for i in range(10))
