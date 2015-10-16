@@ -48,9 +48,40 @@ cdef class APersistentVector:
         else:
             return "vec()"
 
-
     def __str__(self):
         return repr(self)
+
+    def __richcmp__(x, y, int op):
+        assert (isinstance(x, APersistentVector) or isinstance(y, APersistentVector))
+        if op == 2: # ==
+            if (not isinstance(x, APersistentVector) or 
+                not isinstance(y, APersistentVector)):
+                # Both have to be the same type to be equal.
+                return False
+            else:
+                return (<APersistentVector>x)._equals(<APersistentVector>y)
+        elif op == 3: # !=
+            if (not isinstance(x, APersistentVector) or 
+                not isinstance(y, APersistentVector)):
+                # Both have to be the same type to be equal.
+                return True
+            else:
+                return not (<APersistentVector>x)._equals(<APersistentVector>y)
+        else:
+            raise NotImplementedError()
+
+
+
+    cdef bint _equals(self, APersistentVector obj):
+        if self is obj:
+            return True
+        if len(self) != len(obj):
+            return False
+        for a, b in zip(self, obj):
+            if a != b:
+                return False
+        return True
+
 
 
 cdef class PersistentVector(APersistentVector):

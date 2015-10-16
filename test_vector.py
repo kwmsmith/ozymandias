@@ -129,6 +129,19 @@ def test_str_repr():
     assert str(vec()) == "vec()"
 
 
+def test_boolean():
+    assert bool(vec()) == False
+    assert bool(vec([])) == False
+    assert bool(vec([0])) == True
+
+
+def test_equality():
+    assert vec() == vec()
+    assert vec(range(10)) == vec(range(10))
+    assert vec(range(10)) != range(10)
+    assert vec([1, 2, 4]) != vec([1, 2, 3])
+
+
 """
 def test_creation_from_generator():
     v = vec(i for i in range(10))
