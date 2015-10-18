@@ -15,6 +15,14 @@ def test_creation_non_empty():
     assert len(v) == 3
 
 
+def test_creation_large():
+    N = 32**3 + 1
+    v_range = vec(range(N))
+    v_tuple = vec(tuple(range(N)))
+    v_gen = vec(i for i in range(N))
+    assert v_range == v_gen == v_tuple
+
+
 def test_cons():
     # Like list.append, except returns new vector w/ structural sharing.
     v0 = vec()
@@ -35,8 +43,8 @@ def test_cons_128():
         assert v[i] == i
 
 
-def test_cons_1048576():
-    N = 1048576
+def test_cons_large():
+    N = 1048576 + 32
     v = vec()
     for i in xrange(N):
         v = v.cons(i)
@@ -54,7 +62,8 @@ def test_indexing_pos():
 
 def test_assoc():
     # TODO: FIXME: test with a big vector, bigger than 32, 32**2, 32**3, etc...
-    a = vec(range(31))
+    N = 32**3
+    a = vec(range(N))
     b = a.assoc(0, 10)
     assert a[0] == 0
     assert b[0] == 10
@@ -70,8 +79,8 @@ def test_iteration_empty():
         assert False
 
 
-def test_iteration_small():
-    N = 31
+def test_iteration():
+    N = 32**3
     a = vec(range(N))
     b = 0
     for i in a:
@@ -80,11 +89,11 @@ def test_iteration_small():
 
 
 def test_containment():
-    N = 20
+    N = 32**2
     a = vec(range(N))
     for i in range(N):
         assert i in a
-    assert 100 not in a
+    assert N not in a
 
 
 def test_count():
@@ -98,17 +107,17 @@ def test_count():
 
 
 def test_index():
-    ll = range(20)
+    ll = range(32**2)
     shuffle(ll)
     v = vec(ll)
     for i in ll:
         assert ll.index(i) == v.index(i)
     with pytest.raises(ValueError):
-        v.index(30)
+        v.index(len(ll))
 
 
 def test_slice():
-    ll = range(20)
+    ll = range(100)
     l2 = ll[5:10]
     v = vec(ll)
     v2 = v[5:10]
@@ -120,7 +129,7 @@ def test_slice():
 
 
 def test_str_repr():
-    ll = range(20)
+    ll = range(100)
     shuffle(ll)
     v = vec(ll)
     assert "vec(%s)" % str(ll) == str(v)
@@ -137,8 +146,8 @@ def test_boolean():
 
 def test_equality():
     assert vec() == vec()
-    assert vec(range(10)) == vec(range(10))
-    assert vec(range(10)) != range(10)
+    assert vec(range(100)) == vec(range(100))
+    assert vec(range(100)) != range(100)
     assert vec([1, 2, 4]) != vec([1, 2, 3])
 
 
@@ -154,20 +163,33 @@ def test_hash():
     v = vec([[1]]) # vec of unhashable type.
     with pytest.raises(TypeError):
         hash(v)
+
+def test_hash2():
+    v0 = vec()
+    assert isinstance(hash(v0), int)
+    v1 = vec()
+    assert hash(v0) == hash(v1)
+    vals = range(10)
+    shuffle(vals)
+    v0 = vec(vals)
+    v1 = vec(vals)
+    assert hash(v0) == hash(v1)
+
     
 
 def test_listify_and_tupleify():
-    assert list(vec(range(20))) == range(20)
+    N = 100
+    assert list(vec(range(N))) == range(N)
     assert list(vec()) == []
-    assert tuple(vec(range(20))) == tuple(range(20))
+    assert tuple(vec(range(N))) == tuple(range(N))
     assert tuple(vec()) == ()
 
+def test_creation_from_generator():
+    N = 100
+    v = vec(i for i in range(N))
+    assert len(v) == N
 
 """
-def test_creation_from_generator():
-    v = vec(i for i in range(10))
-    assert len(v) == 10
-
 
 def test_big_vector():
     # TODO: test a vector that pushes the limits of len(), etc.
@@ -180,15 +202,6 @@ def test_indexing_neg():
     assert v[-3] == 1
     assert v[-2] == 2
     assert v[-1] == 3
-
-
-def test_equality_with_list_and_tuple():
-    l = range(10, 20)
-    t = tuple(l)
-    v = vec(l)
-    assert l == v
-    assert t == v
-
 
 
 
@@ -210,27 +223,6 @@ def test_replace():
     pass
 
 
-def test_hash():
-    v0 = vec()
-    assert isinstance(hash(v0), int)
-    v1 = vec()
-    assert hash(v0) == hash(v1)
-    vals = range(10)
-    shuffle(vals)
-    v0 = vec(vals)
-    v1 = vec(vals)
-    assert hash(v0) == hash(v1)
-
-
-def test_iteration():
-    l = [10, 11, 12]
-    vv = vec(l)
-    nl = []
-    for v in vv:
-        nl.append(v)
-    assert vv == nl == l
-
-
 def test_slice():
     vv = vec([1, 2, 3, 4])
 
@@ -248,15 +240,6 @@ def test_slice():
 
    # TODO: test negative indices...
 
-
-def test_coercion_to_list_tuple():
-    vv = vec(range(10))
-    ll = list(vv)
-    assert isinstance(ll, list)
-    assert ll == range(10)
-    tt = tuple(vec)
-    assert isinstance(tt, tuple)
-    assert tt == tuple(range(10))
 
 def test_reduction():
     assert reduce(lambda seq, val: seq.conj(val+1),

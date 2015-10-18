@@ -144,33 +144,7 @@ cdef class APersistentVector:
         return self._hash
 
 
-
-
-
-"""
-static long
-tuplehash(PyTupleObject *v)
-{
-    register long x, y;
-    register Py_ssize_t len = Py_SIZE(v);
-    register PyObject **p;
-    long mult = 1000003L;
-    x = 0x345678L;
-    p = v->ob_item;
-    while (--len >= 0) {
-        y = PyObject_Hash(*p++);
-        if (y == -1)
-            return -1;
-        x = (x ^ y) * mult;
-        /* the cast might truncate len; that doesn't change hash stability */
-        mult += (long)(82520L + len + len);
-    }
-    x += 97531L;
-    if (x == -1)
-        x = -2;
-    return x;
-}
-"""
+cdef PersistentVector EMPTY = PersistentVector(0, SHIFT, EMPTY_NODE, [])
 
 cdef class PersistentVector(APersistentVector):
 
@@ -182,15 +156,12 @@ cdef class PersistentVector(APersistentVector):
 
     @classmethod
     def from_sequence(cls, seq):
-        seq = seq or []
-        if not isinstance(seq, (list, tuple)):
-            msg = "converting from types other than list or tuple not yet supported."
-            raise NotImplementedError(msg)
-        cnt = len(seq)
-        if cnt < 32:
-            return cls(cnt, SHIFT, EMPTY_NODE, list(seq))
-        else:
-            raise NotImplementedError("more than %d elements not yet supported." % NN)
+        it = iter(seq or [])
+        ret = EMPTY
+        for item in it:
+            ret = ret.cons(item)
+        return ret
+
 
     def __init__(self, cnt, shift, Node root, list tail):
         self._cnt = cnt
@@ -219,7 +190,6 @@ cdef class PersistentVector(APersistentVector):
         elif isinstance(i_or_slice, slice):
             return self._get_slice(i_or_slice)
 
-
     cdef list array_for(self, int i):
         cdef Node node
         cdef int level
@@ -234,8 +204,7 @@ cdef class PersistentVector(APersistentVector):
             return node._array
         raise IndexError()
 
-
-    def cons(self, val):
+    cpdef cons(self, val):
         cdef:
             list newtail
             Node newroot, tailnode
@@ -254,14 +223,12 @@ cdef class PersistentVector(APersistentVector):
             newroot = self._push_tail(self._shift, self._root, tailnode)
         return PersistentVector(self._cnt + 1, newshift, newroot, [val])
 
-
     cdef Node _new_path(self, int level, Node node):
         if not level:
             return node
         cdef Node ret = Node()
         ret._array[0] = self._new_path(level - SHIFT, node)
         return ret
-
 
     cdef Node _push_tail(self, int level, Node parent, Node tailnode):
         cdef int subidx = ((self._cnt - 1) >> level) & 0x01f
@@ -278,8 +245,7 @@ cdef class PersistentVector(APersistentVector):
         ret._array[subidx] = node_to_insert
         return ret
 
-
-    def assoc(self, int i, val):
+    cpdef assoc(self, int i, val):
         cdef list newtail
         if 0 <= i < self._cnt:
             if i >= _tailoff(self._cnt):
@@ -291,7 +257,6 @@ cdef class PersistentVector(APersistentVector):
                                     self._do_assoc(self._shift, self._root, i, val),
                                     self._tail)
         raise IndexError()
-
 
     cdef Node _do_assoc(self, int level, Node node, int i, val):
         cdef Node ret = Node(node._array[:])
@@ -306,11 +271,8 @@ cdef class PersistentVector(APersistentVector):
                                                 val)
         return ret
 
-
     def __iter__(self):
         return ChunkedIter(self)
-
-
 
 
 cdef Node editable_root(Node root):
