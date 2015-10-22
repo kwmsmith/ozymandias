@@ -26,7 +26,7 @@ cdef class PersistentHashMap(APersistentHashMap):
         Py_ssize_t _cnt
         Node _root
 
-    def __init__(self, cnt, root):
+    def __cinit__(self, cnt, root):
         self._cnt = cnt
         self._root = root
 
@@ -100,7 +100,7 @@ cdef class BitmapIndexedNode(Node):
         uint32_t _bitmap
         list _array
 
-    def __init__(self, uint32_t bitmap, array):
+    def __cinit__(self, uint32_t bitmap, array):
         self._bitmap = bitmap
         self._array = array
 

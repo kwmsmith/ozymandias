@@ -166,7 +166,7 @@ cdef class PersistentVector(APersistentVector):
         return ret
 
 
-    def __init__(self, cnt, shift, Node root, list tail):
+    def __cinit__(self, cnt, shift, Node root, list tail):
         self._cnt = cnt
         self._shift = shift
         self._root = root
@@ -325,7 +325,7 @@ cdef class SubVector(APersistentVector):
         int _start
         int _end
 
-    def __init__(self, vec, int start, int end):
+    def __cinit__(self, vec, int start, int end):
         if isinstance(vec, PersistentVector):
             self._vec = vec
         elif isinstance(vec, SubVector):
