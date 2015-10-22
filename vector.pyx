@@ -1,7 +1,10 @@
 from __future__ import print_function
 
-DEF SHIFT = 5
-DEF NN = 2**SHIFT
+# TODO: FIXME: http://docs.cython.org/src/userguide/extension_types.html#fast-instantiation
+# Apply these ideas to Node() instantiation...
+
+DEF SHIFT = 5U
+DEF NN = (1U << SHIFT)
 
 
 cdef class Node:

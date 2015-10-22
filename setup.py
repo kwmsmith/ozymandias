@@ -7,7 +7,7 @@ setup(name="ozymandias",
       author='Kurt W. Smith',
       author_email='kwmsmith@gmail.com',
       url='https://github.com/kwmsmith/ozymandias',
-      ext_modules=cythonize("vector.pyx"),
+      ext_modules=cythonize("*.pyx"),
       classifiers=[
           "Development Status :: 2 - Pre-Alpha",
           "Intended Audience :: Developers",
