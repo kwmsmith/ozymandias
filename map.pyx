@@ -58,10 +58,10 @@ cdef class PersistentHashMap(APersistentHashMap):
 cdef class Node:
 
     cdef Node assoc(self, uint32_t shift, long hash, key, val, bint *added_leaf):
-         return None
+        raise NotImplementedError("Node.assoc() not implemented.")
 
     cdef find(self, uint32_t shift, long hash, key, not_found):
-        return None
+        raise NotImplementedError("Node.find() not implemented.")
 
 
 cdef inline uint32_t index(uint32_t bitmap, uint32_t bit):
@@ -87,7 +87,7 @@ cdef list clone_and_set_2(list array, idx, val, idx2, val2):
 cdef Node create_node(uint32_t shift, key1, val1, long key2hash, key2, val2):
     cdef long key1hash = hash(key1)
     if key1hash == key2hash:
-        return HashCollisionNode() # TODO: FIXME: !!!
+        return HashCollisionNode(key1hash, 2, [key1, val1, key2, val2])
     cdef bint added_leaf = 0
     return EMPTY_NODE.assoc(shift, key1hash, key1, val1, &added_leaf).assoc(shift, key2hash, key2, val2, &added_leaf)
 
@@ -162,5 +162,44 @@ cdef class BitmapIndexedNode(Node):
 
 cdef class HashCollisionNode(Node):
 
-    def __cinit__(self):
-        raise RuntimeError("Finish him!!!")
+    cdef:
+        long _hash
+        Py_ssize_t _cnt
+        list _array
+
+    def __cinit__(self, long hash, Py_ssize_t count, array):
+        self._hash = hash
+        self._cnt = count
+        self._array = array
+
+    cdef Node assoc(self, uint32_t shift, long hash, key, val, bint *added_leaf):
+        cdef int idx
+        if hash == self._hash:
+            idx = self.find_index(key)
+            if idx != -1:
+                if self._array[idx+1] == val:
+                    return self
+                return HashCollisionNode(hash, self._cnt, clone_and_set(self._array, idx+1, val))
+            new_array = self._array[:]
+            new_array.extend([key, val])
+            added_leaf[0] = 1
+            return HashCollisionNode(hash, self._cnt + 1, new_array)
+        return BitmapIndexedNode(bitpos(<uint32_t>hash, shift),
+                                 [None, self]).assoc(shift, hash,
+                                                     key, val,
+                                                     added_leaf)
+
+    cdef int find_index(self, key):
+        cdef int i
+        for i in range(0, 2*self._cnt, 2):
+            if self._array[i] == key:
+                return i
+        return -1
+
+    cdef find(self, uint32_t shift, long hash, key, not_found):
+        cdef int idx = self.find_index(key)
+        if idx < 0:
+            return not_found
+        if key == self._array[idx]:
+            return self._array[idx+1]
+        return not_found
