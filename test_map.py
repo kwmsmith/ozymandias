@@ -6,6 +6,36 @@ def test_creation():
     m = phm()
     assert len(m) == 0
 
+def test_creation_kwargs():
+    m = phm(a=1, b=2, c=3)
+    assert m['a'] == 1
+    assert m['b'] == 2
+    assert m['c'] == 3
+
+def test_creation_seq_of_tuples():
+    m = phm([('a', 1), ('b', 2), ('c', 3)])
+    assert m['a'] == 1
+    assert m['b'] == 2
+    assert m['c'] == 3
+
+def test_creation_dict():
+    m = phm({'a': 1, 'b': 2, 'c': 3})
+    assert m['a'] == 1
+    assert m['b'] == 2
+    assert m['c'] == 3
+
+def test_creation_mixed():
+    m = phm([('a', 1)], b=2, c=3)
+    assert m['a'] == 1
+    assert m['b'] == 2
+    assert m['c'] == 3
+
+def test_creation_raises():
+    with pytest.raises(TypeError):
+        phm([('a', 1)], {'b': 2})
+    with pytest.raises(TypeError):
+        phm({'b': 2}, [('a', 1)])
+
 def test_assoc():
     m = phm()
     m2 = m.assoc(None, None)

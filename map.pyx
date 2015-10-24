@@ -1,5 +1,7 @@
 from libc.stdint cimport uint32_t
 
+from collections import Mapping, Iterable
+
 DEF SHIFT = 5U
 DEF NN = (1U << SHIFT)
 
@@ -13,7 +15,21 @@ cdef class APersistentHashMap:
     pass
 
 def map(*args, **kwargs):
-    return PersistentHashMap(0, EMPTY_NODE)
+    if len(args) > 1:
+        raise TypeError("map expected at most 1 arguments, got 2.")
+    ret = PersistentHashMap(0, EMPTY_NODE)
+    if args:
+        if isinstance(args[0], Mapping):
+            for k, v in args[0].items():
+                ret = ret.assoc(k, v)
+        elif isinstance(args[0], Iterable):
+            for k, v in args[0]:
+                ret = ret.assoc(k, v)
+    for k,v in kwargs.items():
+        ret = ret.assoc(k, v)
+    return ret
+
+
 
 cdef PersistentHashMap EMPTY = PersistentHashMap(0, None)
 
@@ -35,10 +51,10 @@ cdef class PersistentHashMap(APersistentHashMap):
 
     def __getitem__(self, key):
         if self._root is None:
-            raise KeyError("key %s not found." % key)
+            raise KeyError("key %r not found." % key)
         val = self._root.find(0U, hash(key), key, NOT_FOUND)
         if val is NOT_FOUND:
-            raise KeyError("key %s not found." % key)
+            raise KeyError("key %r not found." % key)
         return val
 
 
@@ -54,6 +70,7 @@ cdef class PersistentHashMap(APersistentHashMap):
             return self
         return PersistentHashMap(self._cnt if added_leaf == 0 else self._cnt + 1,
                                  newroot)
+
 
 cdef class Node:
 
