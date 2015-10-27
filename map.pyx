@@ -24,6 +24,11 @@ cdef class APersistentMap:
 
     cdef long _hash
 
+    def __repr__(self):
+        d = dict(self.items())
+        return "map(%s)" % d
+
+    __str__ = __repr__
 
 def map(*args, **kwargs):
     if len(args) > 1:

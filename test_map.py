@@ -97,3 +97,8 @@ def test_iteration():
     assert set(m.keys()) == set(d.keys())
     assert set(m.values()) == set(d.values())
     assert set(m.items()) == set(d.items())
+
+def test_str():
+    m = phm({i: i**2 for i in range(1000)})
+    # TODO: FIXME: depends on equality working...
+    # assert eval(str(m).replace('map', 'phm')) == m
