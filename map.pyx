@@ -5,14 +5,25 @@ from collections import Mapping, Iterable
 DEF SHIFT = 5U
 DEF NN = (1U << SHIFT)
 
+DEF NULL_HASH = -1
+DEF UNHASHED = -2
+DEF SAFEHASH = -3
+
+ctypedef enum key_val_item_t:
+    _KEY_,
+    _VAL_,
+    _ITEM_
+
 # TODO: FIXME: http://docs.cython.org/src/userguide/extension_types.html#fast-instantiation
 # Apply these ideas to Node() instantiation...
 
 cdef extern from *:
     uint32_t popcount "__builtin_popcount"(uint32_t)
 
-cdef class APersistentHashMap:
-    pass
+cdef class APersistentMap:
+
+    cdef long _hash
+
 
 def map(*args, **kwargs):
     if len(args) > 1:
@@ -36,7 +47,7 @@ cdef PersistentHashMap EMPTY = PersistentHashMap(0, None)
 cdef object NULL_ENTRY = object()
 cdef object NOT_FOUND = object()
 
-cdef class PersistentHashMap(APersistentHashMap):
+cdef class PersistentHashMap(APersistentMap):
 
     cdef:
         Py_ssize_t _cnt
@@ -71,6 +82,25 @@ cdef class PersistentHashMap(APersistentHashMap):
         return PersistentHashMap(self._cnt if added_leaf == 0 else self._cnt + 1,
                                  newroot)
 
+    def __iter__(self):
+        return self.keys()
+
+    def keys(self):
+        if self._root is None:
+            return iter([])
+        return self._root._iter(_KEY_)
+
+    def values(self):
+        if self._root is None:
+            return iter([])
+        return self._root._iter(_VAL_)
+
+    def items(self):
+        if self._root is None:
+            return iter([])
+        return self._root._iter(_ITEM_)
+
+
 
 cdef class Node:
 
@@ -79,6 +109,9 @@ cdef class Node:
 
     cdef find(self, uint32_t shift, long hash, key, not_found):
         raise NotImplementedError("Node.find() not implemented.")
+
+    cdef NodeIter _iter(self, key_val_item_t kvi):
+        raise NotImplementedError()
 
 
 cdef inline uint32_t index(uint32_t bitmap, uint32_t bit):
@@ -107,6 +140,8 @@ cdef Node create_node(uint32_t shift, key1, val1, long key2hash, key2, val2):
         return HashCollisionNode(key1hash, 2, [key1, val1, key2, val2])
     cdef bint added_leaf = 0
     return EMPTY_NODE.assoc(shift, key1hash, key1, val1, &added_leaf).assoc(shift, key2hash, key2, val2, &added_leaf)
+
+
 
 
 cdef BitmapIndexedNode EMPTY_NODE = BitmapIndexedNode(0, [])
@@ -176,6 +211,9 @@ cdef class BitmapIndexedNode(Node):
             return val_or_node
         return not_found
 
+    cdef NodeIter _iter(self, key_val_item_t kvi):
+        return NodeIter(self._array, kvi)
+
 
 cdef class HashCollisionNode(Node):
 
@@ -220,3 +258,74 @@ cdef class HashCollisionNode(Node):
         if key == self._array[idx]:
             return self._array[idx+1]
         return not_found
+    
+    cdef NodeIter _iter(self, key_val_item_t kvi):
+        return NodeIter(self._array, kvi)
+
+cdef object NODE_ITER_NULL = object()
+
+
+cdef inline kvi(key_val_item_t kvi, key, val):
+    if kvi == _KEY_:
+        return key
+    elif kvi == _VAL_:
+        return val
+    elif kvi == _ITEM_:
+        return (key, val)
+
+
+cdef class NodeIter:
+
+    # TODO: FIXME: this is a direct translation from the Clojure Java source.
+    # It's very java-ish, and quite convoluted.  There must be a better way!
+
+    cdef:
+        key_val_item_t _key_val_item
+        Py_ssize_t _i
+        list _array
+        object _next_entry
+        NodeIter _next_iter
+
+    def __cinit__(self, array, kvi):
+        self._i = 0
+        self._array = array
+        self._next_entry = NODE_ITER_NULL
+        self._next_iter = None
+        self._key_val_item = kvi
+
+    cdef bint _advance(self):
+        while self._i < len(self._array):
+            key = self._array[self._i]
+            val_or_node = self._array[self._i+1]
+            self._i += 2
+            if key is not NULL_ENTRY:
+                self._next_entry = kvi(self._key_val_item, key, val_or_node)
+                return True
+            elif val_or_node is not NULL_ENTRY:
+                it = (<Node>val_or_node)._iter(self._key_val_item)
+                if it.has_next():
+                    self._next_iter = it
+                    return True
+        return False
+
+    cdef bint has_next(self):
+        if self._next_entry is not NODE_ITER_NULL or self._next_iter is not None:
+            return True
+        return self._advance()
+
+    def __iter__(self):
+        return self
+    
+    def __next__(self):
+        ret = self._next_entry
+        if ret is not NODE_ITER_NULL:
+            self._next_entry = NODE_ITER_NULL
+            return ret
+        elif self._next_iter is not None:
+            ret = self._next_iter.next()
+            if not self._next_iter.has_next():
+                self._next_iter = None
+            return ret
+        elif self._advance():
+            return self.next()
+        raise StopIteration()

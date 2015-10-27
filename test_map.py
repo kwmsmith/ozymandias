@@ -89,3 +89,11 @@ def test_pathological():
     assert len(m) == 100
     for i in range(100):
         assert m[Pathological(i)] == i
+
+def test_iteration():
+    d = {i: i**2 for i in range(1000)}
+    m = phm(d)
+    assert set(m) == set(d)
+    assert set(m.keys()) == set(d.keys())
+    assert set(m.values()) == set(d.values())
+    assert set(m.items()) == set(d.items())
