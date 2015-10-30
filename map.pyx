@@ -30,6 +30,50 @@ cdef class APersistentMap:
 
     __str__ = __repr__
 
+    def __contains__(self, k):
+        try:
+            self[k]
+        except KeyError:
+            return False
+        else:
+            return True
+
+    def __richcmp__(x, y, int op):
+        assert (isinstance(x, APersistentMap) or isinstance(y, APersistentMap))
+        if op == 2: # ==
+            if (not isinstance(x, APersistentMap) or 
+                not isinstance(y, APersistentMap)):
+                # Both have to be the same type to be equal.
+                return False
+            else:
+                return (<APersistentMap>x)._equals(<APersistentMap>y)
+        elif op == 3: # !=
+            if (not isinstance(x, APersistentMap) or 
+                not isinstance(y, APersistentMap)):
+                # Both have to be the same type to be equal.
+                return True
+            else:
+                return not (<APersistentMap>x)._equals(<APersistentMap>y)
+        else:
+            raise NotImplementedError()
+
+    cdef bint _equals(self, APersistentMap obj):
+        if self is obj:
+            print("self is obj")
+            return True
+        if len(self) != len(obj):
+            print("len(self) != len(obj)")
+            return False
+        for k, v in self.items():
+            if k not in obj:
+                print(k, "not in obj")
+                return False
+            if obj[k] != v:
+                print("%s != %s" % (obj[k], v))
+                return False
+        return True
+
+
 def map(*args, **kwargs):
     if len(args) > 1:
         raise TypeError("map expected at most 1 arguments, got 2.")
@@ -44,8 +88,6 @@ def map(*args, **kwargs):
     for k,v in kwargs.items():
         ret = ret.assoc(k, v)
     return ret
-
-
 
 cdef PersistentHashMap EMPTY = PersistentHashMap(0, None)
 
