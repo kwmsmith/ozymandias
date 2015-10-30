@@ -1,6 +1,11 @@
 import pytest
 
-from map import map as phm
+import collections
+from map import map as phm, APersistentMap, PersistentHashMap
+
+def test_mapping_register():
+    assert issubclass(APersistentMap, collections.Mapping)
+    assert issubclass(PersistentHashMap, collections.Mapping)
 
 def test_creation():
     m = phm()
@@ -59,7 +64,6 @@ def test_key_error():
     with pytest.raises(KeyError):
         m[1]
 
-
 def test_replace():
     m = phm()
     m = m.assoc(1, 2)
@@ -67,7 +71,6 @@ def test_replace():
     m2 = m.assoc(1, 10)
     assert m2[1] == 10
     assert m[1] == 2
-    
 
 class Pathological(object):
     '''Class with different objects that share the same hash.'''
@@ -106,3 +109,10 @@ def test_equals():
 def test_str():
     m = phm({i: i**2 for i in range(1000)})
     assert eval(str(m).replace('map', 'phm')) == m
+
+def test_get():
+    m = phm((i, i**2) for i in range(10))
+    assert m.get(0) == 0
+    assert m.get(8) == 8**2
+    assert m.get('a') == None
+    assert m.get('b', 'notfound') == 'notfound'

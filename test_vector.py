@@ -1,7 +1,19 @@
 import pytest
 
+import collections
+
+import vector
 from vector import vec
 from random import shuffle
+
+def test_sequence_register():
+    assert issubclass(vector.APersistentVector, collections.Sequence)
+    assert issubclass(vector.PersistentVector, collections.Sequence)
+    assert issubclass(vector.SubVector, collections.Sequence)
+
+    assert not issubclass(vector.APersistentVector, collections.MutableSequence)
+    assert not issubclass(vector.PersistentVector, collections.MutableSequence)
+    assert not issubclass(vector.SubVector, collections.MutableSequence)
 
 def test_creation_empty():
     v = vec()

@@ -146,6 +146,8 @@ cdef class APersistentVector:
             self._hash = x
         return self._hash
 
+from collections import Sequence
+Sequence.register(APersistentVector)
 
 cdef PersistentVector EMPTY = PersistentVector(0, SHIFT, EMPTY_NODE, [])
 

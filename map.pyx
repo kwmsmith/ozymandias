@@ -38,6 +38,12 @@ cdef class APersistentMap:
         else:
             return True
 
+    def get(self, k, d=None):
+        try:
+            return self[k]
+        except KeyError:
+            return d
+
     def __richcmp__(x, y, int op):
         assert (isinstance(x, APersistentMap) or isinstance(y, APersistentMap))
         if op == 2: # ==
@@ -72,6 +78,8 @@ cdef class APersistentMap:
                 print("%s != %s" % (obj[k], v))
                 return False
         return True
+
+Mapping.register(APersistentMap)
 
 
 def map(*args, **kwargs):
