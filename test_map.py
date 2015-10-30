@@ -7,6 +7,9 @@ def test_mapping_register():
     assert issubclass(APersistentMap, collections.Mapping)
     assert issubclass(PersistentHashMap, collections.Mapping)
 
+    assert not issubclass(APersistentMap, collections.MutableMapping)
+    assert not issubclass(PersistentHashMap, collections.MutableMapping)
+
 def test_creation():
     m = phm()
     assert len(m) == 0
