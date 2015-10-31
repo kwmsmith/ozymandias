@@ -1,4 +1,3 @@
-from libc.stdint cimport uint32_t
 
 from collections import Mapping, Iterable
 
@@ -8,11 +7,6 @@ DEF NN = (1U << SHIFT)
 DEF NULL_HASH = -1
 DEF UNHASHED = -2
 DEF SAFEHASH = -3
-
-ctypedef enum key_val_item_t:
-    _KEY_,
-    _VAL_,
-    _ITEM_
 
 # TODO: FIXME: http://docs.cython.org/src/userguide/extension_types.html#fast-instantiation
 # Apply these ideas to Node() instantiation...
@@ -25,8 +19,6 @@ DEF UNHASHED = -2
 DEF SAFEHASH = -3
 
 cdef class APersistentMap:
-
-    cdef long _hash
 
     def __cinit__(self):
         self._hash = UNHASHED
@@ -135,10 +127,6 @@ cdef object NULL_ENTRY = object()
 cdef object NOT_FOUND = object()
 
 cdef class PersistentHashMap(APersistentMap):
-
-    cdef:
-        Py_ssize_t _cnt
-        Node _root
 
     def __cinit__(self, cnt, root):
         self._cnt = cnt
@@ -413,13 +401,6 @@ cdef class NodeIter:
 
     # TODO: FIXME: this is a direct translation from the Clojure Java source.
     # It's very java-ish, and quite convoluted.  There must be a better way!
-
-    cdef:
-        key_val_item_t _key_val_item
-        Py_ssize_t _i
-        list _array
-        object _next_entry
-        NodeIter _next_iter
 
     def __cinit__(self, array, kvi):
         self._i = 0
