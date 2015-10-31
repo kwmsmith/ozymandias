@@ -61,6 +61,7 @@ def test_dissoc():
         m = m.dissoc(i)
         assert i not in m
     assert m == phm()
+    assert phm().dissoc(10) == phm()
 
 def test_getitem():
     m = phm()

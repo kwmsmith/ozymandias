@@ -176,6 +176,8 @@ cdef class PersistentHashMap(APersistentMap):
         newroot = self._root.without(0, hash(key), key)
         if newroot is self._root:
             return self
+        if newroot is NULL_ENTRY:
+            newroot = None
         return PersistentHashMap(self._cnt - 1, newroot)
 
     def __iter__(self):
