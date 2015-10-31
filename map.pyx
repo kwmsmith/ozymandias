@@ -137,6 +137,15 @@ cdef class PersistentHashMap(APersistentMap):
         return PersistentHashMap(self._cnt if added_leaf == 0 else self._cnt + 1,
                                  newroot)
 
+    def dissoc(self, key):
+        cdef Node newroot
+        if self._root is None:
+            return self
+        newroot = self._root.without(0, hash(key), key)
+        if newroot is self._root:
+            return self
+        return PersistentHashMap(self._cnt - 1, newroot)
+
     def __iter__(self):
         return self.keys()
 
@@ -162,11 +171,15 @@ cdef class Node:
     cdef Node assoc(self, uint32_t shift, long hash, key, val, bint *added_leaf):
         raise NotImplementedError("Node.assoc() not implemented.")
 
+    cdef Node without(self, uint32_t shift, long hash, key):
+        raise NotImplementedError("Node.without() not implemented.")
+
     cdef find(self, uint32_t shift, long hash, key, not_found):
         raise NotImplementedError("Node.find() not implemented.")
 
     cdef NodeIter _iter(self, key_val_item_t kvi):
         raise NotImplementedError()
+
 
 
 cdef inline uint32_t index(uint32_t bitmap, uint32_t bit):
@@ -188,6 +201,9 @@ cdef list clone_and_set_2(list array, idx, val, idx2, val2):
     clone[idx] = val
     clone[idx2] = val2
     return clone
+
+cdef list remove_pair(list array, i):
+    return array[:2*i] + array[2*(i+1):]
 
 cdef Node create_node(uint32_t shift, key1, val1, long key2hash, key2, val2):
     cdef long key1hash = hash(key1)
@@ -268,6 +284,30 @@ cdef class BitmapIndexedNode(Node):
 
     cdef NodeIter _iter(self, key_val_item_t kvi):
         return NodeIter(self._array, kvi)
+    
+    cdef Node without(self, uint32_t shift, long hash, key):
+        cdef uint32_t bit = bitpos(<uint32_t>hash, shift)
+        if self._bitmap & bit == 0:
+            return self
+        cdef uint32_t idx = index(self._bitmap, bit)
+        key_or_null = self._array[2*idx]
+        val_or_node = self._array[2*idx+1]
+        cdef Node n
+        if key_or_null is NULL_ENTRY:
+            n = (<Node>val_or_node).without(shift + 5, hash, key)
+            if n is val_or_node:
+                return self
+            if n is not NULL_ENTRY:
+                return BitmapIndexedNode(self._bitmap, clone_and_set(self._array, 2*idx+1, n))
+            if self._bitmap == bit:
+                return NULL_ENTRY
+            return BitmapIndexedNode(self._bitmap,
+                                     self._bitmap ^ bit,
+                                     remove_pair(self._array, idx))
+        if key == key_or_null:
+            # TODO: collapse
+            return BitmapIndexedNode(self._bitmap ^ bit, remove_pair(self._array, idx))
+        return self
 
 
 cdef class HashCollisionNode(Node):
@@ -313,12 +353,22 @@ cdef class HashCollisionNode(Node):
         if key == self._array[idx]:
             return self._array[idx+1]
         return not_found
+
+    cdef Node without(self, uint32_t shift, long hash, key):
+        cdef int idx = self.find_index(key)
+        if idx < 0:
+            return self
+        if self._cnt == 1:
+            return NULL_ENTRY
+        return HashCollisionNode(self._hash,
+                                 self._cnt - 1,
+                                 remove_pair(self._array, idx//2))
     
     cdef NodeIter _iter(self, key_val_item_t kvi):
         return NodeIter(self._array, kvi)
 
-cdef object NODE_ITER_NULL = object()
 
+cdef object NODE_ITER_NULL = object()
 
 cdef inline kvi(key_val_item_t kvi, key, val):
     if kvi == _KEY_:

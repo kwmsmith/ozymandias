@@ -53,6 +53,13 @@ def test_assoc():
         assert len(m) == i+1
         assert m[i] == i
 
+def test_dissoc():
+    m = phm((i, i**2) for i in range(100))
+    for i in range(100):
+        m = m.dissoc(i)
+        assert i not in m
+    assert m == phm()
+
 def test_getitem():
     m = phm()
     m2 = m.assoc(1, 42)
