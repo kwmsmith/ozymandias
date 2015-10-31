@@ -48,14 +48,16 @@ def test_assoc():
     m = phm()
     m2 = m.assoc(None, None)
     assert len(m2) == 1
-    for i in range(100):
+    for i in range(32**3):
         m = m.assoc(i, i)
         assert len(m) == i+1
         assert m[i] == i
 
 def test_dissoc():
-    m = phm((i, i**2) for i in range(100))
-    for i in range(100):
+    N = 32**3
+    m = phm((i, 0) for i in range(N))
+    assert len(m) == N
+    for i in range(N):
         m = m.dissoc(i)
         assert i not in m
     assert m == phm()

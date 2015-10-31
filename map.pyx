@@ -213,8 +213,6 @@ cdef Node create_node(uint32_t shift, key1, val1, long key2hash, key2, val2):
     return EMPTY_NODE.assoc(shift, key1hash, key1, val1, &added_leaf).assoc(shift, key2hash, key2, val2, &added_leaf)
 
 
-
-
 cdef BitmapIndexedNode EMPTY_NODE = BitmapIndexedNode(0, [])
 
 cdef class BitmapIndexedNode(Node):
@@ -226,7 +224,6 @@ cdef class BitmapIndexedNode(Node):
     def __cinit__(self, uint32_t bitmap, array):
         self._bitmap = bitmap
         self._array = array
-
 
     cdef Node assoc(self, uint32_t shift, long hash, key, val, bint *added_leaf):
         cdef list new_array
@@ -267,7 +264,6 @@ cdef class BitmapIndexedNode(Node):
             new_array[2*idx+1] = val
             new_array[2*(idx+1):] = self._array[2*idx:]
             return BitmapIndexedNode(self._bitmap | bit, new_array)
-
 
     cdef find(self, uint32_t shift, long hash, key, not_found):
         cdef uint32_t bit = bitpos(<uint32_t>hash, shift)
