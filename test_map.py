@@ -50,7 +50,8 @@ def test_assoc():
     assert len(m2) == 1
     for i in range(100):
         m = m.assoc(i, i)
-    assert len(m) == 100
+        assert len(m) == i+1
+        assert m[i] == i
 
 def test_getitem():
     m = phm()
