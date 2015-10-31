@@ -20,9 +20,40 @@ ctypedef enum key_val_item_t:
 cdef extern from *:
     uint32_t popcount "__builtin_popcount"(uint32_t)
 
+DEF NULL_HASH = -1
+DEF UNHASHED = -2
+DEF SAFEHASH = -3
+
 cdef class APersistentMap:
 
     cdef long _hash
+
+    def __cinit__(self):
+        self._hash = UNHASHED
+
+    def __hash__(self):
+        cdef long y
+        cdef long x = 0x345678L
+        cdef Py_ssize_t ll = len(self)
+        cdef long mult = 1000003L
+        if self._hash != UNHASHED and self._hash != NULL_HASH:
+            return self._hash
+        if self._hash == NULL_HASH:
+            raise TypeError("map contains unhashable type.")
+        elif self._hash == UNHASHED:
+            for k,v in self.items():
+                try:
+                    y = hash(k) ^ hash(v)
+                except TypeError:
+                    self._hash = NULL_HASH
+                    raise
+                x = (x ^ y) * mult
+                mult += <long>(82520L + ll + ll)
+            x += 97531L
+            if x == NULL_HASH or x == UNHASHED:
+                x = SAFEHASH
+            self._hash = x
+        return self._hash
 
     def __repr__(self):
         d = dict(self.items())
@@ -78,6 +109,7 @@ cdef class APersistentMap:
                 print("%s != %s" % (obj[k], v))
                 return False
         return True
+
 
 Mapping.register(APersistentMap)
 

@@ -129,3 +129,14 @@ def test_get():
     assert m.get(8) == 8**2
     assert m.get('a') == None
     assert m.get('b', 'notfound') == 'notfound'
+
+def test_hash():
+    m = phm()
+    assert isinstance(hash(m), int)
+    a = phm((i, None) for i in range(100))
+    b = phm((i, None) for i in range(99, -1, -1))
+    assert a == b and hash(a) == hash(b)
+    c = phm(((i,), phm(a=i, b=2*i)) for i in range(100))
+    assert isinstance(hash(c), int)
+    with pytest.raises(TypeError):
+        hash(phm(a=[1,2,3]))
