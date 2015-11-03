@@ -77,28 +77,19 @@ cdef class APersistentMap:
             else:
                 return (<APersistentMap>x)._equals(<APersistentMap>y)
         elif op == 3: # !=
-            if (not isinstance(x, APersistentMap) or 
-                not isinstance(y, APersistentMap)):
-                # Both have to be the same type to be equal.
-                return True
-            else:
-                return not (<APersistentMap>x)._equals(<APersistentMap>y)
+            return not x == y
         else:
             raise NotImplementedError()
 
     cdef bint _equals(self, APersistentMap obj):
         if self is obj:
-            print("self is obj")
             return True
         if len(self) != len(obj):
-            print("len(self) != len(obj)")
             return False
         for k, v in self.items():
             if k not in obj:
-                print(k, "not in obj")
                 return False
             if obj[k] != v:
-                print("%s != %s" % (obj[k], v))
                 return False
         return True
 
@@ -109,19 +100,18 @@ Mapping.register(APersistentMap)
 def map(*args, **kwargs):
     if len(args) > 1:
         raise TypeError("map expected at most 1 arguments, got 2.")
-    ret = PersistentHashMap(0, EMPTY_NODE)
+    ret = EMPTY
     if args:
         if isinstance(args[0], Mapping):
             for k, v in args[0].items():
                 ret = ret.assoc(k, v)
-        elif isinstance(args[0], Iterable):
+        else:
             for k, v in args[0]:
                 ret = ret.assoc(k, v)
     for k,v in kwargs.items():
         ret = ret.assoc(k, v)
     return ret
 
-cdef PersistentHashMap EMPTY = PersistentHashMap(0, None)
 
 cdef object NULL_ENTRY = object()
 cdef object NOT_FOUND = object()
@@ -186,7 +176,7 @@ cdef class PersistentHashMap(APersistentMap):
             return iter([])
         return self._root._iter(_ITEM_)
 
-
+EMPTY = PersistentHashMap(0, None)
 
 cdef class Node:
 

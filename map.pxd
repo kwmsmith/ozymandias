@@ -26,6 +26,8 @@ cdef class APersistentMap:
     cdef long _hash
     cdef bint _equals(self, APersistentMap obj)
 
+cdef PersistentHashMap EMPTY
+
 cdef class PersistentHashMap(APersistentMap):
     cdef:
         Py_ssize_t _cnt

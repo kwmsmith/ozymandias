@@ -73,12 +73,7 @@ cdef class APersistentVector:
             else:
                 return (<APersistentVector>x)._equals(<APersistentVector>y)
         elif op == 3: # !=
-            if (not isinstance(x, APersistentVector) or 
-                not isinstance(y, APersistentVector)):
-                # Both have to be the same type to be equal.
-                return True
-            else:
-                return not (<APersistentVector>x)._equals(<APersistentVector>y)
+            return not x == y
         else:
             raise NotImplementedError()
 
