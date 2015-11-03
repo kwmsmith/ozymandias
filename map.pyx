@@ -61,7 +61,7 @@ cdef class APersistentMap:
         else:
             return True
 
-    def get(self, k, d=None):
+    cpdef get(self, k, d=None):
         try:
             return self[k]
         except KeyError:
@@ -134,7 +134,7 @@ cdef class PersistentHashMap(APersistentMap):
         return val
 
 
-    def assoc(self, key, value):
+    cpdef PersistentHashMap assoc(self, key, value):
         cdef Node newroot
         cdef bint added_leaf = 0
         if self._root is None:
@@ -147,7 +147,7 @@ cdef class PersistentHashMap(APersistentMap):
         return PersistentHashMap(self._cnt if added_leaf == 0 else self._cnt + 1,
                                  newroot)
 
-    def dissoc(self, key):
+    cpdef PersistentHashMap dissoc(self, key):
         cdef Node newroot
         if self._root is None:
             return self
@@ -161,17 +161,17 @@ cdef class PersistentHashMap(APersistentMap):
     def __iter__(self):
         return self.keys()
 
-    def keys(self):
+    cpdef keys(self):
         if self._root is None:
             return iter([])
         return self._root._iter(_KEY_)
 
-    def values(self):
+    cpdef values(self):
         if self._root is None:
             return iter([])
         return self._root._iter(_VAL_)
 
-    def items(self):
+    cpdef items(self):
         if self._root is None:
             return iter([])
         return self._root._iter(_ITEM_)
@@ -188,7 +188,7 @@ cdef class Node:
 
     cdef find(self, uint32_t shift, long hash, key, not_found):
         raise NotImplementedError("Node.find() not implemented.")
-
+    
     cdef NodeIter _iter(self, key_val_item_t kvi):
         raise NotImplementedError()
 

@@ -26,9 +26,17 @@ cdef class APersistentMap:
     cdef long _hash
     cdef bint _equals(self, APersistentMap obj)
 
+    cpdef get(self, k, d=?)
+
 cdef PersistentHashMap EMPTY
 
 cdef class PersistentHashMap(APersistentMap):
     cdef:
         Py_ssize_t _cnt
         Node _root
+
+    cpdef keys(self)
+    cpdef values(self)
+    cpdef items(self)
+    cpdef PersistentHashMap assoc(self, key, value)
+    cpdef PersistentHashMap dissoc(self, key)
