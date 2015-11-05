@@ -35,8 +35,8 @@ def vec(*args):
     if len(args) <= 1:
         seq = args[0] if len(args) == 1 else []
         return PersistentVector.from_sequence(seq)
-    if len(args) == 4:
-        return PersistentVector(*args)
+    msg = "vec() takes at most 1 argument (%d given)"
+    raise TypeError(msg % len(args))
 
 DEF NULL_HASH = -1
 DEF UNHASHED = -2

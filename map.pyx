@@ -1,4 +1,3 @@
-
 from collections import Mapping, Iterable
 
 DEF SHIFT = 5U
@@ -80,7 +79,7 @@ cdef class APersistentMap:
             return not x == y
         else:
             raise NotImplementedError()
-
+    
     cdef bint _equals(self, APersistentMap obj):
         if self is obj:
             return True
@@ -99,7 +98,7 @@ Mapping.register(APersistentMap)
 
 def map(*args, **kwargs):
     if len(args) > 1:
-        raise TypeError("map expected at most 1 arguments, got 2.")
+        raise TypeError("map expected at most 1 arguments, got %d." % len(args))
     ret = EMPTY
     if args:
         if isinstance(args[0], Mapping):
@@ -160,17 +159,17 @@ cdef class PersistentHashMap(APersistentMap):
 
     def __iter__(self):
         return self.keys()
-
+    
     cpdef keys(self):
         if self._root is None:
             return iter([])
         return self._root._iter(_KEY_)
-
+    
     cpdef values(self):
         if self._root is None:
             return iter([])
         return self._root._iter(_VAL_)
-
+    
     cpdef items(self):
         if self._root is None:
             return iter([])
