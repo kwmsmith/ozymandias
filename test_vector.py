@@ -3,7 +3,7 @@ import pytest
 import collections
 
 import vector
-from vector import vec
+from vector import vec, TransientVector
 from random import shuffle
 
 def test_sequence_register():
@@ -187,8 +187,6 @@ def test_hash2():
     v1 = vec(vals)
     assert hash(v0) == hash(v1)
 
-    
-
 def test_listify_and_tupleify():
     N = 100
     assert list(vec(range(N))) == range(N)
@@ -200,6 +198,26 @@ def test_creation_from_generator():
     N = 100
     v = vec(i for i in range(N))
     assert len(v) == N
+
+def test_transient():
+    v = vec(range(100))
+    trans = TransientVector.from_persistent(v)
+    assert len(trans) == len(v)
+    v2 = trans.persistent()
+    assert v == v2
+    with pytest.raises(RuntimeError):
+        len(trans)
+
+def test_transient_conj():
+    N = 32**3
+    t = TransientVector.from_persistent(vec())
+    for i in range(N):
+        assert len(t) == i
+        t = t.conj(i)
+    p = t.persistent()
+    assert len(p) == N
+
+
 
 """
 
