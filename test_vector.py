@@ -1,3 +1,5 @@
+from __future__ import print_function
+import sys
 import pytest
 
 import collections
@@ -30,8 +32,8 @@ def test_creation_non_empty():
 def test_creation_large():
     N = 32**3 + 1
     v_range = vec(range(N))
-    v_tuple = vec(tuple(range(N)))
-    v_gen = vec(i for i in range(N))
+    v_tuple = vec(tuple(xrange(N)))
+    v_gen = vec(i for i in xrange(N))
     assert v_range == v_gen == v_tuple
 
 
@@ -48,18 +50,27 @@ def test_cons():
 def test_cons_128():
     N = 128
     v = vec()
-    for i in range(N):
+    for i in xrange(N):
         v = v.cons(i)
     assert len(v) == N
-    for i in range(N):
+    for i in xrange(N):
         assert v[i] == i
 
-
 def test_cons_large():
-    N = 1048576 + 32
+    N = 32**3 + 1
     v = vec()
     for i in xrange(N):
         v = v.cons(i)
+    assert len(v) == N
+    for i in xrange(N):
+        assert v[i] == i
+
+def test_conj_large():
+    N = 1048576 + 32
+    tv = vec().transient()
+    for i in xrange(N):
+        tv = tv.conj(i)
+    v = tv.persistent()
     assert len(v) == N
     for i in xrange(N):
         assert v[i] == i
@@ -103,7 +114,7 @@ def test_iteration():
 def test_containment():
     N = 32**2
     a = vec(range(N))
-    for i in range(N):
+    for i in xrange(N):
         assert i in a
     assert N not in a
 
@@ -196,7 +207,7 @@ def test_listify_and_tupleify():
 
 def test_creation_from_generator():
     N = 100
-    v = vec(i for i in range(N))
+    v = vec(i for i in xrange(N))
     assert len(v) == N
 
 def test_transient():
@@ -211,7 +222,7 @@ def test_transient():
 def test_transient_conj():
     N = 32**3
     t = vec().transient()
-    for i in range(N):
+    for i in xrange(N):
         assert len(t) == i
         t = t.conj(i)
     p = t.persistent()
@@ -220,7 +231,7 @@ def test_transient_conj():
 def test_transient_assoc():
     N = 32**3
     t = vec(range(N)).transient()
-    for i in range(0, N, N//100):
+    for i in xrange(0, N, N//100):
         t = t.assoc(i, None)
         assert t[i] == None
 

@@ -165,11 +165,10 @@ cdef class PersistentVector(APersistentVector):
     @classmethod
     def from_sequence(cls, seq):
         it = iter(seq or [])
-        ret = EMPTY
+        ret = EMPTY.transient()
         for item in it:
-            ret = ret.cons(item)
-        return ret
-
+            ret = ret.conj(item)
+        return ret.persistent()
 
     def __cinit__(self, cnt, shift, Node root, list tail):
         self._cnt = cnt
@@ -220,10 +219,10 @@ cdef class PersistentVector(APersistentVector):
         if self._cnt - _tailoff(self._cnt) < NN:
             newtail = self._tail + [val]
             return PersistentVector(self._cnt + 1, self._shift, self._root, newtail)
-        tailnode = Node(False, self._tail)
+        tailnode = Node(self._root._editable, self._tail)
         newshift = self._shift
         if (self._cnt >> 5) > (1 << self._shift):
-            newroot = Node(False)
+            newroot = Node(self._root._editable)
             newroot._array[0] = self._root
             newroot._array[1] = _new_path(self._root._editable, self._shift, tailnode)
             newshift += SHIFT
@@ -233,7 +232,7 @@ cdef class PersistentVector(APersistentVector):
 
     cdef Node _push_tail(self, int level, Node parent, Node tailnode):
         cdef int subidx = ((self._cnt - 1) >> level) & 0x01f
-        cdef Node ret = Node(False, parent._array[:])
+        cdef Node ret = Node(parent._editable, parent._array[:])
         cdef Node node_to_insert, child
         if level == SHIFT:
             node_to_insert = tailnode
@@ -260,7 +259,7 @@ cdef class PersistentVector(APersistentVector):
         raise IndexError()
 
     cdef Node _do_assoc(self, int level, Node node, int i, val):
-        cdef Node ret = Node(False, node._array[:])
+        cdef Node ret = Node(node._editable, node._array[:])
         cdef int subidx
         if not level:
             ret._array[i & 0x01f] = val
@@ -371,9 +370,9 @@ cdef class TransientVector:
         return cls(pvec._cnt, pvec._shift, editable_root(pvec._root), editable_tail(pvec._tail))
 
     cdef Node ensure_editable(self, Node node):
-        if node._editable == True:
+        if node._editable == self._root._editable:
             return node
-        return Node(True, node._array[:])
+        return Node(self._root._editable, node._array[:])
 
     def ensure_editable_root(self):
         if not self._root._editable:
@@ -397,13 +396,13 @@ cdef class TransientVector:
             self._cnt += 1
             return self
         cdef Node newroot
-        cdef Node tailnode = Node(True, self._tail)
+        cdef Node tailnode = Node(self._root._editable, self._tail)
         self._tail = [None] * NN
         self._tail[0] = val
         cdef int newshift = self._shift
         if (self._cnt >> SHIFT) > ( 1U << self._shift):
-            newroot = Node(True)
-            newroot._array[0] = val
+            newroot = Node(self._root._editable)
+            newroot._array[0] = self._root
             newroot._array[1] = _new_path(self._root._editable, self._shift, tailnode)
             newshift += SHIFT
         else:
@@ -413,7 +412,7 @@ cdef class TransientVector:
         self._cnt += 1
         return self
 
-    cdef Node _push_tail(self, int level, Node parent, Node tailnode):
+    cpdef Node _push_tail(self, int level, Node parent, Node tailnode):
         parent = self.ensure_editable(parent)
         cdef int subidx = ((self._cnt - 1) >> level) & 0x01f
         cdef Node child
