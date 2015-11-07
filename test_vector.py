@@ -210,14 +210,27 @@ def test_transient():
 
 def test_transient_conj():
     N = 32**3
-    t = TransientVector.from_persistent(vec())
+    t = vec().transient()
     for i in range(N):
         assert len(t) == i
         t = t.conj(i)
     p = t.persistent()
     assert len(p) == N
 
+def test_transient_assoc():
+    N = 32**3
+    t = vec(range(N)).transient()
+    for i in range(0, N, N//100):
+        t = t.assoc(i, None)
+        assert t[i] == None
 
+def test_transient_persistent_etc():
+    pv = vec()
+    tv = pv.transient()
+    pv2 = tv.persistent()
+    with pytest.raises(RuntimeError):
+        len(tv)
+    tv2 = pv2.transient()
 
 """
 
