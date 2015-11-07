@@ -10,3 +10,4 @@ test: $(SOS)
 
 clean:
 	-rm -rf build __pycache__ $(SOS) $(CSOURCES)
+.PHONY: clean
