@@ -162,6 +162,12 @@ cdef class PersistentVector(APersistentVector):
         Node _root
         list _tail
 
+    def __cinit__(self, cnt, shift, Node root, list tail):
+        self._cnt = cnt
+        self._shift = shift
+        self._root = root
+        self._tail = tail
+
     @classmethod
     def from_sequence(cls, seq):
         it = iter(seq or [])
@@ -169,12 +175,6 @@ cdef class PersistentVector(APersistentVector):
         for item in it:
             ret = ret.conj(item)
         return ret.persistent()
-
-    def __cinit__(self, cnt, shift, Node root, list tail):
-        self._cnt = cnt
-        self._shift = shift
-        self._root = root
-        self._tail = tail
 
     def __len__(self):
         return self._cnt
@@ -188,7 +188,8 @@ cdef class PersistentVector(APersistentVector):
             int start, stop, stride
         start, stop, stride = sl.indices(len(self))
         if stride != 1:
-            raise NotImplementedError("non unitary stride not yet supported.")
+            # TODO: FIXME: raising exception in cdef method
+            raise NotImplementedError("non unitary stride not yet supported.") 
         return SubVector(self, start, stop)
 
     def __getitem__(self, i_or_slice):
@@ -209,7 +210,7 @@ cdef class PersistentVector(APersistentVector):
                 node = node._array[(i >> level) & 0x01f]
                 level -= SHIFT
             return node._array
-        raise IndexError()
+        raise IndexError() # TODO: FIXME: raising exception in cdef method...
 
     cpdef cons(self, val):
         cdef:
@@ -273,7 +274,7 @@ cdef class PersistentVector(APersistentVector):
 
     def __iter__(self):
         return ChunkedIter(self)
-
+    
     cpdef TransientVector transient(self):
         return TransientVector.from_persistent(self)
 
