@@ -175,12 +175,51 @@ cdef class PersistentHashMap(APersistentMap):
             return iter([])
         return self._root._iter(_ITEM_)
 
+cdef class TransientHashMap:
+
+    cdef:
+        bint _editable
+        Node _root
+        Py_ssize_t _cnt
+    
+    def __cinit__(self, bint editable, Node root, Py_ssize_t count):
+        self._editable = editable
+        self._root = root
+        self._cnt = count
+    
+    @classmethod
+    def from_persistent(cls, APersistentMap m):
+        return cls(True, m._root, m._cnt)
+    
+    cdef ensure_editable(self):
+        if not self._editable:
+            raise RuntimeError("Transient used after made persistent.")
+
+    cpdef TransientHashMap tassoc(self, key, val):
+        self.ensure_editable()
+        cdef Node r, n
+        if self._root is None:
+            r = EMPTY_NODE
+        else:
+            r = self._root
+        cdef bint added_leaf = False
+        n = r.tassoc(self._editable, 0, hash(key), key, val, &added_leaf)
+        if n != self._root:
+            self._root = n
+        if added_leaf:
+            self._cnt += 1
+        return self
+
+
 EMPTY = PersistentHashMap(0, None)
 
 cdef class Node:
 
     cdef Node assoc(self, uint32_t shift, long hash, key, val, bint *added_leaf):
         raise NotImplementedError("Node.assoc() not implemented.")
+
+    cdef Node tassoc(self, bint editable, uint32_t shift, long hash, key, val, bint *added_leaf):
+        raise NotImplementedError("Node.tassoc() not implemented.")
 
     cdef Node without(self, uint32_t shift, long hash, key):
         raise NotImplementedError("Node.without() not implemented.")
@@ -222,6 +261,15 @@ cdef Node create_node(uint32_t shift, key1, val1, long key2hash, key2, val2):
         return HashCollisionNode(key1hash, 2, [key1, val1, key2, val2])
     cdef bint added_leaf = 0
     return EMPTY_NODE.assoc(shift, key1hash, key1, val1, &added_leaf).assoc(shift, key2hash, key2, val2, &added_leaf)
+
+cdef Node create_node_editable(bint edit, uint32_t shift, key1, val1, long key2hash, key2, val2):
+    cdef long key1hash = hash(key1)
+    if key1hash == key2hash:
+        return HashCollisionNode(key1hash, 2, [key1, val1, key2, val2])
+    cdef bint added_leaf = 0
+    return (EMPTY_NODE
+            .tassoc(edit, shift, key1hash, key1, val1, &added_leaf)
+            .tassoc(edit, shift, key2hash, key2, val2, &added_leaf))
 
 
 cdef BitmapIndexedNode EMPTY_NODE = BitmapIndexedNode(0, [])
@@ -268,13 +316,51 @@ cdef class BitmapIndexedNode(Node):
                                                                  val)))
         else:
             pc = popcount(self._bitmap)
-            new_array = [None] * (2 * (pc + 1))
-            new_array[:2*idx] = self._array[:2*idx]
-            new_array[2*idx] = key
             added_leaf[0] = 1
-            new_array[2*idx+1] = val
-            new_array[2*(idx+1):] = self._array[2*idx:]
+            new_array = self._array[:2*idx] + [key, val] + self._array[2*idx:]
+            # new_array = [None] * (2 * (pc + 1))
+            # new_array[:2*idx] = self._array[:2*idx]
+            # new_array[2*idx] = key
+            # new_array[2*idx+1] = val
+            # new_array[2*(idx+1):] = self._array[2*idx:]
             return BitmapIndexedNode(self._bitmap | bit, new_array)
+
+    cdef Node tassoc(self, bint edit, uint32_t shift, long hash, key, val, bint *added_leaf):
+        cdef Node n
+        cdef uint32_t pc
+        cdef uint32_t bit = bitpos(<uint32_t>hash, shift)
+        cdef uint32_t idx = index(self._bitmap, bit)
+        cdef BitmapIndexedNode editable
+        if self._bitmap & bit:
+            key_or_null = self._array[2*idx]
+            val_or_node = self._array[2*idx+1]
+            if key_or_null is NULL_ENTRY:
+                n = (<Node>val_or_node).tassoc(edit, shift + SHIFT,
+                                               hash, key, val, added_leaf)
+                if n is val_or_node:
+                    return self
+                return self.edit_and_set(edit, 2*idx+1, n)
+            if key == key_or_null:
+                if val == val_or_node:
+                    return self
+                return self.edit_and_set(edit, 2*idx+1, val)
+            added_leaf[0] = 1
+            return self.edit_and_set_2(edit, 2*idx, NULL_ENTRY,
+                                       2*idx+1, 
+                                       create_node_editable(edit, shift + SHIFT,
+                                                            key_or_null, val_or_node, hash, key, val))
+        else:
+            pc = popcount(self._bitmap)
+            editable = self.ensure_editable(edit)
+            added_leaf[0] = 1
+            editable._array[2*idx:2*(idx+1)] = [key, val]
+            editable._bitmap |= bit
+            return editable
+
+    cdef BitmapIndexedNode ensure_editable(self, bint editable):
+        if self._editable == editable:
+            return self
+        return BitmapIndexedNode(editable, self._bitmap, self._array[:])
 
     cdef find(self, uint32_t shift, long hash, key, not_found):
         cdef uint32_t bit = bitpos(<uint32_t>hash, shift)
@@ -315,6 +401,17 @@ cdef class BitmapIndexedNode(Node):
             # TODO: collapse
             return BitmapIndexedNode(self._bitmap ^ bit, remove_pair(self._array, idx))
         return self
+
+    cdef BitmapIndexedNode edit_and_set(self, bint edit, int i, a):
+        cdef BitmapIndexedNode editable = self.ensure_editable(edit)
+        editable._array[i] = a
+        return editable
+
+    cdef BitmapIndexedNode edit_and_set_2(self, bint edit, int i, a, int j, b):
+        cdef BitmapIndexedNode editable = self.ensure_editable(edit)
+        editable._array[i] = a
+        editable._array[j] = b
+        return editable
 
 
 cdef class HashCollisionNode(Node):

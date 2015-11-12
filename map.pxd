@@ -18,6 +18,7 @@ cdef class NodeIter:
 
 cdef class Node:
     cdef Node assoc(self, uint32_t shift, long hash, key, val, bint *added_leaf)
+    cdef Node tassoc(self, bint editable, uint32_t shift, long hash, key, val, bint *added_leaf)
     cdef Node without(self, uint32_t shift, long hash, key)
     cdef find(self, uint32_t shift, long hash, key, not_found)
     cdef NodeIter _iter(self, key_val_item_t kvi)
