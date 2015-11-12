@@ -141,3 +141,23 @@ def test_hash():
     assert isinstance(hash(c), int)
     with pytest.raises(TypeError):
         hash(phm(a=[1,2,3]))
+
+def test_transient():
+    tm = phm().transient()
+    for i in range(100):
+        assert len(tm) == i
+        tm.tassoc(i, i)
+        assert i in tm
+        assert tm[i] == i
+
+def test_transient_persistent():
+    pm = phm({1:2})
+    tm = pm.transient()
+    assert len(pm) == len(tm) == 1
+    assert pm[1] == tm[1] == 2
+    pm2 = tm.persistent()
+    assert pm2 == pm
+    with pytest.raises(RuntimeError):
+        len(tm)
+    with pytest.raises(RuntimeError):
+        tm[1]

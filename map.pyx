@@ -99,17 +99,17 @@ Mapping.register(APersistentMap)
 def map(*args, **kwargs):
     if len(args) > 1:
         raise TypeError("map expected at most 1 arguments, got %d." % len(args))
-    ret = EMPTY
+    ret = EMPTY.transient()
     if args:
         if isinstance(args[0], Mapping):
             for k, v in args[0].items():
-                ret = ret.assoc(k, v)
+                ret = ret.tassoc(k, v)
         else:
             for k, v in args[0]:
-                ret = ret.assoc(k, v)
+                ret = ret.tassoc(k, v)
     for k,v in kwargs.items():
-        ret = ret.assoc(k, v)
-    return ret
+        ret = ret.tassoc(k, v)
+    return ret.persistent()
 
 
 cdef object NULL_ENTRY = object()
@@ -174,22 +174,49 @@ cdef class PersistentHashMap(APersistentMap):
         if self._root is None:
             return iter([])
         return self._root._iter(_ITEM_)
+    
+    cpdef TransientHashMap transient(self):
+        return TransientHashMap.from_persistent(self)
+
 
 cdef class TransientHashMap:
 
-    cdef:
-        bint _editable
-        Node _root
-        Py_ssize_t _cnt
-    
     def __cinit__(self, bint editable, Node root, Py_ssize_t count):
         self._editable = editable
         self._root = root
         self._cnt = count
     
     @classmethod
-    def from_persistent(cls, APersistentMap m):
+    def from_persistent(cls, PersistentHashMap m):
         return cls(True, m._root, m._cnt)
+
+    def __len__(self):
+        self.ensure_editable()
+        return self._cnt
+
+    def __getitem__(self, key):
+        self.ensure_editable()
+        if self._root is None:
+            raise KeyError("key %r not found." % key)
+        val = self._root.find(0U, hash(key), key, NOT_FOUND)
+        if val is NOT_FOUND:
+            raise KeyError("key %r not found." % key)
+        return val
+
+    cpdef get(self, k, d=None):
+        self.ensure_editable()
+        try:
+            return self[k]
+        except KeyError:
+            return d
+
+    def __contains__(self, k):
+        try:
+            self[k]
+        except KeyError:
+            return False
+        else:
+            return True
     
     cdef ensure_editable(self):
         if not self._editable:
@@ -209,6 +236,10 @@ cdef class TransientHashMap:
         if added_leaf:
             self._cnt += 1
         return self
+    
+    cpdef PersistentHashMap persistent(self):
+        self._editable = False
+        return PersistentHashMap(self._cnt, self._root)
 
 
 EMPTY = PersistentHashMap(0, None)
@@ -279,10 +310,12 @@ cdef class BitmapIndexedNode(Node):
     cdef:
         uint32_t _bitmap
         list _array
+        bint _editable
 
-    def __cinit__(self, uint32_t bitmap, array):
+    def __cinit__(self, uint32_t bitmap, array, bint edit=False):
         self._bitmap = bitmap
         self._array = array
+        self._editable = edit
 
     cdef Node assoc(self, uint32_t shift, long hash, key, val, bint *added_leaf):
         cdef list new_array
@@ -353,14 +386,14 @@ cdef class BitmapIndexedNode(Node):
             pc = popcount(self._bitmap)
             editable = self.ensure_editable(edit)
             added_leaf[0] = 1
-            editable._array[2*idx:2*(idx+1)] = [key, val]
+            editable._array[2*idx:2*idx] = [key, val]
             editable._bitmap |= bit
             return editable
 
     cdef BitmapIndexedNode ensure_editable(self, bint editable):
         if self._editable == editable:
             return self
-        return BitmapIndexedNode(editable, self._bitmap, self._array[:])
+        return BitmapIndexedNode(self._bitmap, self._array[:], edit=editable)
 
     cdef find(self, uint32_t shift, long hash, key, not_found):
         cdef uint32_t bit = bitpos(<uint32_t>hash, shift)

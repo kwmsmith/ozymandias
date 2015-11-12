@@ -31,6 +31,16 @@ cdef class APersistentMap:
 
 cdef PersistentHashMap EMPTY
 
+cdef class TransientHashMap:
+    cdef:
+        bint _editable
+        Node _root
+        Py_ssize_t _cnt
+    cdef ensure_editable(self)
+    cpdef TransientHashMap tassoc(self, key, val)
+    cpdef PersistentHashMap persistent(self)
+    cpdef get(self, k, d=?)
+
 cdef class PersistentHashMap(APersistentMap):
     cdef:
         Py_ssize_t _cnt
@@ -41,3 +51,4 @@ cdef class PersistentHashMap(APersistentMap):
     cpdef items(self)
     cpdef PersistentHashMap assoc(self, key, value)
     cpdef PersistentHashMap dissoc(self, key)
+    cpdef TransientHashMap transient(self)
