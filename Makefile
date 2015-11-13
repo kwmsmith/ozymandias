@@ -5,6 +5,9 @@ test: $(SOS)
 	py.test
 .PHONY: test
 
+all: $(SOS)
+.PHONY: all
+
 %.so: %.pyx
 	python setup.py build_ext -if
 
