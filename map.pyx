@@ -557,10 +557,10 @@ cdef class NodeIter:
             self._next_entry = NODE_ITER_NULL
             return ret
         elif self._next_iter is not None:
-            ret = self._next_iter.next()
+            ret = next(self._next_iter)
             if not self._next_iter.has_next():
                 self._next_iter = None
             return ret
         elif self._advance():
-            return self.next()
+            return next(self)
         raise StopIteration()
