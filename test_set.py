@@ -3,7 +3,7 @@ import pytest
 import collections
 from set import set as pset, APersistentSet, PersistentHashSet
 
-N = 32**3
+N = 4 * 32**3
 
 def test_set_register():
     assert issubclass(APersistentSet, collections.Set)
@@ -26,11 +26,13 @@ def test_cons():
     s = pset()
     for i in range(N):
         assert len(s) == i
-        s = s.cons(i)
-        assert i in s
+        si = str(i)
+        s = s.cons(si)
+        assert si in s
 
 def test_disjoin():
     s = pset(str(i) for i in range(N))
+    assert len(s) == N
     for i in range(N-1, -1, -1):
         si = str(i)
         assert si in s

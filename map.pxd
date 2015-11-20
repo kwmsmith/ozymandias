@@ -17,14 +17,14 @@ cdef class NodeIter:
     cdef bint has_next(self)
 
 cdef class Node:
-    cdef Node assoc(self, uint32_t shift, long hash, key, val, bint *added_leaf)
-    cdef Node tassoc(self, bint editable, uint32_t shift, long hash, key, val, bint *added_leaf)
-    cdef Node without(self, uint32_t shift, long hash, key)
-    cdef find(self, uint32_t shift, long hash, key, not_found)
+    cdef Node assoc(self, uint32_t shift, uint32_t hash, key, val, bint *added_leaf)
+    cdef Node tassoc(self, bint editable, uint32_t shift, uint32_t hash, key, val, bint *added_leaf)
+    cdef Node without(self, uint32_t shift, uint32_t hash, key)
+    cdef find(self, uint32_t shift, uint32_t hash, key, not_found)
     cdef NodeIter _iter(self, key_val_item_t kvi)
 
 cdef class APersistentMap:
-    cdef long _hash
+    cdef uint32_t _hash
     cdef bint _equals(self, APersistentMap obj)
 
     cpdef get(self, k, d=?)

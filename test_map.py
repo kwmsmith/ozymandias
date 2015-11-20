@@ -161,3 +161,4 @@ def test_transient_persistent():
         len(tm)
     with pytest.raises(RuntimeError):
         tm[1]
+
