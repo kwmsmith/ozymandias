@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 from collections import Mapping, Iterable
 
 DEF SHIFT = 5U
@@ -9,6 +11,9 @@ DEF SAFEHASH = -3
 
 # TODO: FIXME: http://docs.cython.org/src/userguide/extension_types.html#fast-instantiation
 # Apply these ideas to Node() instantiation...
+
+def map_hash(long h):
+    return int(<uint32_t>h)
 
 cdef extern from *:
     uint32_t popcount "__builtin_popcount"(uint32_t)
@@ -112,7 +117,7 @@ def map(*args, **kwargs):
     return ret.persistent()
 
 
-cdef object NULL_ENTRY = object()
+cdef Node NULL_ENTRY = Node()
 cdef object NOT_FOUND = object()
 
 cdef class PersistentHashMap(APersistentMap):
@@ -246,16 +251,16 @@ EMPTY = PersistentHashMap(0, None)
 
 cdef class Node:
 
-    cdef Node assoc(self, uint32_t shift, long hash, key, val, bint *added_leaf):
+    cdef Node assoc(self, uint32_t shift, uint32_t hash, key, val, bint *added_leaf):
         raise NotImplementedError("Node.assoc() not implemented.")
 
-    cdef Node tassoc(self, bint editable, uint32_t shift, long hash, key, val, bint *added_leaf):
+    cdef Node tassoc(self, bint editable, uint32_t shift, uint32_t hash, key, val, bint *added_leaf):
         raise NotImplementedError("Node.tassoc() not implemented.")
 
-    cdef Node without(self, uint32_t shift, long hash, key):
+    cdef Node without(self, uint32_t shift, uint32_t hash, key):
         raise NotImplementedError("Node.without() not implemented.")
 
-    cdef find(self, uint32_t shift, long hash, key, not_found):
+    cdef find(self, uint32_t shift, uint32_t hash, key, not_found):
         raise NotImplementedError("Node.find() not implemented.")
     
     cdef NodeIter _iter(self, key_val_item_t kvi):
@@ -286,15 +291,15 @@ cdef list clone_and_set_2(list array, idx, val, idx2, val2):
 cdef list remove_pair(list array, i):
     return array[:2*i] + array[2*(i+1):]
 
-cdef Node create_node(uint32_t shift, key1, val1, long key2hash, key2, val2):
-    cdef long key1hash = hash(key1)
+cdef Node create_node(uint32_t shift, key1, val1, uint32_t key2hash, key2, val2):
+    cdef uint32_t key1hash = hash(key1)
     if key1hash == key2hash:
         return HashCollisionNode(key1hash, 2, [key1, val1, key2, val2])
     cdef bint added_leaf = 0
     return EMPTY_NODE.assoc(shift, key1hash, key1, val1, &added_leaf).assoc(shift, key2hash, key2, val2, &added_leaf)
 
-cdef Node create_node_editable(bint edit, uint32_t shift, key1, val1, long key2hash, key2, val2):
-    cdef long key1hash = hash(key1)
+cdef Node create_node_editable(bint edit, uint32_t shift, key1, val1, uint32_t key2hash, key2, val2):
+    cdef uint32_t key1hash = hash(key1)
     if key1hash == key2hash:
         return HashCollisionNode(key1hash, 2, [key1, val1, key2, val2])
     cdef bint added_leaf = 0
@@ -317,7 +322,7 @@ cdef class BitmapIndexedNode(Node):
         self._array = array
         self._editable = edit
 
-    cdef Node assoc(self, uint32_t shift, long hash, key, val, bint *added_leaf):
+    cdef Node assoc(self, uint32_t shift, uint32_t hash, key, val, bint *added_leaf):
         cdef list new_array
         cdef Node n
         cdef uint32_t pc
@@ -358,7 +363,7 @@ cdef class BitmapIndexedNode(Node):
             # new_array[2*(idx+1):] = self._array[2*idx:]
             return BitmapIndexedNode(self._bitmap | bit, new_array)
 
-    cdef Node tassoc(self, bint edit, uint32_t shift, long hash, key, val, bint *added_leaf):
+    cdef Node tassoc(self, bint edit, uint32_t shift, uint32_t hash, key, val, bint *added_leaf):
         cdef Node n
         cdef uint32_t pc
         cdef uint32_t bit = bitpos(<uint32_t>hash, shift)
@@ -395,7 +400,7 @@ cdef class BitmapIndexedNode(Node):
             return self
         return BitmapIndexedNode(self._bitmap, self._array[:], edit=editable)
 
-    cdef find(self, uint32_t shift, long hash, key, not_found):
+    cdef find(self, uint32_t shift, uint32_t hash, key, not_found):
         cdef uint32_t bit = bitpos(<uint32_t>hash, shift)
         if (self._bitmap & bit) == 0:
             return not_found
@@ -411,7 +416,7 @@ cdef class BitmapIndexedNode(Node):
     cdef NodeIter _iter(self, key_val_item_t kvi):
         return NodeIter(self._array, kvi)
     
-    cdef Node without(self, uint32_t shift, long hash, key):
+    cdef Node without(self, uint32_t shift, uint32_t hash, key):
         cdef uint32_t bit = bitpos(<uint32_t>hash, shift)
         if self._bitmap & bit == 0:
             return self
@@ -427,8 +432,7 @@ cdef class BitmapIndexedNode(Node):
                 return BitmapIndexedNode(self._bitmap, clone_and_set(self._array, 2*idx+1, n))
             if self._bitmap == bit:
                 return NULL_ENTRY
-            return BitmapIndexedNode(self._bitmap,
-                                     self._bitmap ^ bit,
+            return BitmapIndexedNode(self._bitmap ^ bit,
                                      remove_pair(self._array, idx))
         if key == key_or_null:
             # TODO: collapse
@@ -450,16 +454,16 @@ cdef class BitmapIndexedNode(Node):
 cdef class HashCollisionNode(Node):
 
     cdef:
-        long _hash
+        uint32_t _hash
         Py_ssize_t _cnt
         list _array
 
-    def __cinit__(self, long hash, Py_ssize_t count, array):
+    def __cinit__(self, uint32_t hash, Py_ssize_t count, array):
         self._hash = hash
         self._cnt = count
         self._array = array
 
-    cdef Node assoc(self, uint32_t shift, long hash, key, val, bint *added_leaf):
+    cdef Node assoc(self, uint32_t shift, uint32_t hash, key, val, bint *added_leaf):
         cdef int idx
         if hash == self._hash:
             idx = self.find_index(key)
@@ -471,8 +475,8 @@ cdef class HashCollisionNode(Node):
             new_array.extend([key, val])
             added_leaf[0] = 1
             return HashCollisionNode(hash, self._cnt + 1, new_array)
-        return BitmapIndexedNode(bitpos(<uint32_t>hash, shift),
-                                 [None, self]).assoc(shift, hash,
+        return BitmapIndexedNode(bitpos(self._hash, shift),
+                                 [NULL_ENTRY, self]).assoc(shift, hash,
                                                      key, val,
                                                      added_leaf)
 
@@ -483,7 +487,7 @@ cdef class HashCollisionNode(Node):
                 return i
         return -1
 
-    cdef find(self, uint32_t shift, long hash, key, not_found):
+    cdef find(self, uint32_t shift, uint32_t hash, key, not_found):
         cdef int idx = self.find_index(key)
         if idx < 0:
             return not_found
@@ -491,7 +495,7 @@ cdef class HashCollisionNode(Node):
             return self._array[idx+1]
         return not_found
 
-    cdef Node without(self, uint32_t shift, long hash, key):
+    cdef Node without(self, uint32_t shift, uint32_t hash, key):
         cdef int idx = self.find_index(key)
         if idx < 0:
             return self
@@ -557,10 +561,10 @@ cdef class NodeIter:
             self._next_entry = NODE_ITER_NULL
             return ret
         elif self._next_iter is not None:
-            ret = self._next_iter.next()
+            ret = next(self._next_iter)
             if not self._next_iter.has_next():
                 self._next_iter = None
             return ret
         elif self._advance():
-            return self.next()
+            return next(self)
         raise StopIteration()

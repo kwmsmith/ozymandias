@@ -2,6 +2,8 @@ from __future__ import print_function
 import sys
 import pytest
 
+from six.moves import range, xrange
+
 import collections
 
 import vector
@@ -130,7 +132,7 @@ def test_count():
 
 
 def test_index():
-    ll = range(32**2)
+    ll = list(range(32**2))
     shuffle(ll)
     v = vec(ll)
     for i in ll:
@@ -140,7 +142,7 @@ def test_index():
 
 
 def test_slice():
-    ll = range(100)
+    ll = list(range(100))
     l2 = ll[5:10]
     v = vec(ll)
     v2 = v[5:10]
@@ -152,7 +154,7 @@ def test_slice():
 
 
 def test_str_repr():
-    ll = range(100)
+    ll = list(range(100))
     shuffle(ll)
     v = vec(ll)
     assert "vec(%s)" % str(ll) == str(v)
@@ -192,7 +194,7 @@ def test_hash2():
     assert isinstance(hash(v0), int)
     v1 = vec()
     assert hash(v0) == hash(v1)
-    vals = range(10)
+    vals = list(range(10))
     shuffle(vals)
     v0 = vec(vals)
     v1 = vec(vals)
@@ -200,7 +202,7 @@ def test_hash2():
 
 def test_listify_and_tupleify():
     N = 100
-    assert list(vec(range(N))) == range(N)
+    assert list(vec(range(N))) == list(range(N))
     assert list(vec()) == []
     assert tuple(vec(range(N))) == tuple(range(N))
     assert tuple(vec()) == ()
