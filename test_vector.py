@@ -142,7 +142,7 @@ def test_index():
 
 
 def test_slice():
-    ll = range(100)
+    ll = list(range(100))
     l2 = ll[5:10]
     v = vec(ll)
     v2 = v[5:10]
