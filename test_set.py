@@ -46,3 +46,9 @@ def test_transient():
     ts = ps.transient()
     ps2 = ts.persistent()
     assert ps == ps2
+
+def test_hash():
+    s = pset()
+    for i in range(100):
+        assert isinstance(hash(s), int)
+        s = s.cons(i)

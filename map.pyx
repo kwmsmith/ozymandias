@@ -241,6 +241,9 @@ cdef class TransientHashMap:
         if added_leaf:
             self._cnt += 1
         return self
+
+    cpdef TransientHashMap tdissoc(self, key):
+        pass
     
     cpdef PersistentHashMap persistent(self):
         self._editable = False
