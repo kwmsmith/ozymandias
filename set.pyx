@@ -12,7 +12,6 @@ def set(*args):
     return ret
 
 cdef class APersistentSet:
-    
     cdef:
         long _hash
         map.APersistentMap _impl
@@ -64,7 +63,6 @@ Set.register(APersistentSet)
 cdef PersistentHashSet EMPTY = PersistentHashSet(map.EMPTY)
 
 cdef class PersistentHashSet(APersistentSet):
-
     cpdef PersistentHashSet cons(self, obj):
         if obj in self:
             return self
@@ -74,3 +72,16 @@ cdef class PersistentHashSet(APersistentSet):
         if obj in self:
             return PersistentHashSet(self._impl.dissoc(obj))
         return self
+
+    cpdef TransientHashSet transient(self):
+        return TransientHashSet(self._impl.transient())
+
+
+cdef class TransientHashSet:
+    cdef map.TransientHashMap _impl
+    
+    def __cinit__(self, map.TransientHashMap impl):
+        self._impl = impl
+    
+    def persistent(self):
+        return PersistentHashSet(self._impl.persistent())

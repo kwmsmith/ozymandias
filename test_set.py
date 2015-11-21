@@ -40,3 +40,9 @@ def test_disjoin():
         assert si not in s
         assert len(s) == i
     assert s == pset()
+
+def test_transient():
+    ps = pset()
+    ts = ps.transient()
+    ps2 = ts.persistent()
+    assert ps == ps2
