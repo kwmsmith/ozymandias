@@ -38,6 +38,7 @@ cdef class TransientHashMap:
         Py_ssize_t _cnt
     cdef ensure_editable(self)
     cpdef TransientHashMap tassoc(self, key, val)
+    cpdef TransientHashMap tdissoc(self, key)
     cpdef PersistentHashMap persistent(self)
     cpdef get(self, k, d=?)
 
