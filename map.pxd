@@ -20,8 +20,11 @@ cdef class Node:
     cdef Node assoc(self, uint32_t shift, uint32_t hash, key, val, bint *added_leaf)
     cdef Node tassoc(self, bint editable, uint32_t shift, uint32_t hash, key, val, bint *added_leaf)
     cdef Node without(self, uint32_t shift, uint32_t hash, key)
+    cdef Node twithout(self, bint edit, uint32_t shift, uint32_t hash, key, bint *removed_leaf)
     cdef find(self, uint32_t shift, uint32_t hash, key, not_found)
     cdef NodeIter _iter(self, key_val_item_t kvi)
+    cdef Node edit_and_remove_pair(self, bint edit, uint32_t bit, int i)
+    cdef Node ensure_editable(self, bint editable)
 
 cdef class APersistentMap:
     cdef uint32_t _hash
