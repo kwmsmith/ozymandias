@@ -92,7 +92,7 @@ Set.register(APersistentSet)
 cdef PersistentHashSet EMPTY = PersistentHashSet(map.EMPTY)
 
 cdef class PersistentHashSet(APersistentSet):
-    cpdef PersistentHashSet cons(self, obj):
+    cpdef PersistentHashSet conj(self, obj):
         if obj in self:
             return self
         return PersistentHashSet(self._impl.assoc(obj, obj))
@@ -121,11 +121,11 @@ cdef class TransientHashSet:
             self._impl = m
         return self
 
-    # cpdef TransientHashSet disjoin(self, val):
-        # cdef map.TransientHashMap m = self._impl.tdissoc(val, val)
-        # if not m is self._impl:
-            # self._impl = m
-        # return self
+    cpdef TransientHashSet tdisjoin(self, val):
+        cdef map.TransientHashMap m = self._impl.tdissoc(val)
+        if not m is self._impl:
+            self._impl = m
+        return self
 
     def __contains__(self, obj):
         return obj in self._impl

@@ -144,7 +144,6 @@ def test_hash():
 
 def test_transient():
     N = 32**3
-    print("test_transient phm().transient()")
     tm = phm().transient()
     for i in range(N):
         assert len(tm) == i
@@ -154,11 +153,9 @@ def test_transient():
     for i in range(N):
         tm = tm.tdissoc(i)
         assert len(tm) == (N-i-1)
-    print("test_transient tm.persistent()")
     pm = tm.persistent()
     assert len(pm) == 0
     assert isinstance(pm, PersistentHashMap)
-    print("test_transient pm == phm()")
     assert pm == phm()
 
 def test_transient_persistent():
@@ -172,4 +169,3 @@ def test_transient_persistent():
         len(tm)
     with pytest.raises(RuntimeError):
         tm[1]
-
