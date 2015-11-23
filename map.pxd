@@ -29,7 +29,6 @@ cdef class Node:
 cdef class APersistentMap:
     cdef uint32_t _hash
     cdef bint _equals(self, APersistentMap obj)
-
     cpdef get(self, k, d=?)
 
 cdef PersistentHashMap EMPTY
