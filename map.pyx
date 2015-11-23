@@ -511,11 +511,13 @@ cdef class HashCollisionNode(Node):
         uint32_t _hash
         Py_ssize_t _cnt
         list _array
+        bint _editable
 
-    def __cinit__(self, uint32_t hash, Py_ssize_t count, array):
+    def __cinit__(self, uint32_t hash, Py_ssize_t count, array, bint edit=False):
         self._hash = hash
         self._cnt = count
         self._array = array
+        self._editable = edit
 
     cdef Node assoc(self, uint32_t shift, uint32_t hash, key, val, bint *added_leaf):
         cdef int idx
@@ -533,6 +535,38 @@ cdef class HashCollisionNode(Node):
                                  [NULL_ENTRY, self]).assoc(shift, hash,
                                                      key, val,
                                                      added_leaf)
+
+    cdef Node ensure_editable(self, bint editable):
+        if self._editable == editable:
+            return self
+        cdef list new_array = self._array[:] + [NULL_ENTRY, NULL_ENTRY]
+        return HashCollisionNode(self._hash, self._cnt, new_array, editable)
+
+    cdef Node tassoc(self, bint edit, uint32_t shift, uint32_t hash, key, val, bint *added_leaf):
+        cdef int idx
+        cdef HashCollisionNode editable
+        cdef list newarray
+        if hash == self._hash:
+            idx = self.find_index(key)
+            if idx != -1:
+                if self._array[idx+1] == val:
+                    return self
+                return self.edit_and_set(edit, idx+1, val)
+            if len(self._array) > 2 * self._cnt:
+                added_leaf[0] = True
+                editable = self.edit_and_set(edit, 2*self._cnt, key, 2*self._cnt+1, val)
+                editable._cnt += 1
+                return editable
+            new_array = self._array[:] + [key, val]
+            added_leaf[0] = True
+            if self._editable == edit:
+                self._array = new_array
+                self._cnt += 1
+                return self
+            return HashCollisionNode(self._hash, self._cnt+1, new_array, edit=edit)
+        return BitmapIndexedNode(bitpos(self._hash, shift), 
+                                 [NULL_ENTRY, self, NULL_ENTRY, NULL_ENTRY],
+                                 edit=edit).tassoc(edit, shift, hash, key, val, added_leaf)
 
     cdef int find_index(self, key):
         cdef int i
@@ -558,6 +592,21 @@ cdef class HashCollisionNode(Node):
         return HashCollisionNode(self._hash,
                                  self._cnt - 1,
                                  remove_pair(self._array, idx//2))
+
+    cdef Node twithout(self, bint edit, uint32_t shift, uint32_t hash, key, bint *removed_leaf):
+        cdef int idx = self.find_index(key)
+        if idx < 0:
+            return self
+        removed_leaf[0] = True
+        if self._cnt == 1:
+            return NULL_ENTRY
+        cdef HashCollisionNode editable = self.ensure_editable(edit)
+        editable._array[idx] = editable._array[2*self._cnt-2]
+        editable._array[idx+1] = editable._array[2*self._cnt-1]
+        editable._array[2*self._cnt-2] = editable._array[2*self._cnt-1] = None
+        editable._cnt -= 1
+        return editable
+
     
     cdef NodeIter _iter(self, key_val_item_t kvi):
         return NodeIter(self._array, kvi)
