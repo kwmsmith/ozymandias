@@ -143,12 +143,41 @@ def test_hash():
         hash(phm(a=[1,2,3]))
 
 def test_transient():
+    N = 32**3
     tm = phm().transient()
-    for i in range(100):
+    for i in range(N):
         assert len(tm) == i
-        tm.tassoc(i, i)
+        tm = tm.tassoc(i, i)
         assert i in tm
         assert tm[i] == i
+    for i in range(N):
+        tm = tm.tdissoc(i)
+        assert len(tm) == (N-i-1)
+    pm = tm.persistent()
+    assert len(pm) == 0
+    assert isinstance(pm, PersistentHashMap)
+    assert pm == phm()
+
+class cs(object):
+
+    def __init__(self, s):
+        self.s = str(s)
+
+    def __hash__(self):
+        return hash(self.s) % 100
+
+    def __eq__(self, other):
+        return self.s == other.s
+
+def test_transient_collisions():
+    N = 32**3
+    tm = phm((cs(i), None) for i in range(N)).transient()
+    for i in range(N):
+        si = cs(i)
+        assert si in tm
+        tm = tm.tdissoc(cs(i))
+        assert si not in tm
+    assert tm.persistent() == phm()
 
 def test_transient_persistent():
     pm = phm({1:2})
@@ -161,4 +190,3 @@ def test_transient_persistent():
         len(tm)
     with pytest.raises(RuntimeError):
         tm[1]
-
