@@ -104,7 +104,8 @@ Mapping.register(APersistentMap)
 def map(*args, **kwargs):
     if len(args) > 1:
         raise TypeError("map expected at most 1 arguments, got %d." % len(args))
-    ret = EMPTY.transient()
+    # ret = EMPTY.transient()
+    ret = EMPTY_SMALL_MAP.transient()
     if args:
         if isinstance(args[0], Mapping):
             for k, v in args[0].items():
@@ -287,7 +288,6 @@ cdef class Node:
 
     cdef Node ensure_editable(self, bint editable):
         raise NotImplementedError("Node.ensure_editable() not implemented.")
-
 
 
 cdef inline uint32_t index(uint32_t bitmap, uint32_t bit):
@@ -484,7 +484,6 @@ cdef class BitmapIndexedNode(Node):
             return self.edit_and_remove_pair(edit, bit, idx)
         return self
 
-
     cdef BitmapIndexedNode edit_and_set(self, bint edit, int i, a):
         cdef BitmapIndexedNode editable = self.ensure_editable(edit)
         editable._array[i] = a
@@ -607,6 +606,128 @@ cdef class HashCollisionNode(Node):
         editable._cnt -= 1
         return editable
 
+    
+    cdef NodeIter _iter(self, key_val_item_t kvi):
+        return NodeIter(self._array, kvi)
+
+DEF HASHTABLE_THRESHOLD = 16
+
+cdef SmallArrayNode EMPTY_SMALL_NODE = SmallArrayNode([])
+cdef PersistentHashMap EMPTY_SMALL_MAP = PersistentHashMap(0, EMPTY_SMALL_NODE)
+
+cdef class SmallArrayNode(Node):
+    # TODO: Small optimization: keep a separate uint32_t array of hashes
+    # parallel to _array.  Check it before doing full key equality checks.  If
+    # hashes aren't equal, then their associated keys can't be equal, either.
+    # This does put more pressure on the cache; we may drop HASHTABLE_THRESHOLD
+    # to account for this.
+
+    cdef:
+        list _array
+        bint _editable
+
+    def __cinit__(self, array, bint edit=False):
+        self._array = array
+        self._editable = edit
+
+    cdef Node create_ht(self, array):
+        cdef BitmapIndexedNode node = EMPTY_NODE
+        cdef bint added_leaf
+        for i in range(0, len(self._array), 2):
+            key = self._array[i]
+            val = self._array[i+1]
+            added_leaf = False
+            node = node.assoc(0, hash(key), key, val, &added_leaf)
+            assert added_leaf == True
+        return node
+
+    cdef Node tcreate_ht(self, array):
+        cdef BitmapIndexedNode node = EMPTY_NODE
+        cdef bint added_leaf
+        for i in range(0, len(self._array), 2):
+            key = self._array[i]
+            val = self._array[i+1]
+            added_leaf = False
+            node = node.tassoc(True, 0, hash(key), key, val, &added_leaf)
+            assert added_leaf == True
+        return node
+
+    cdef int find_index(self, key):
+        cdef int i
+        for i in range(0, len(self._array), 2):
+            if self._array[i] == key:
+                return i
+        return -1
+
+    cdef Node assoc(self, uint32_t shift, uint32_t hash, key, val, bint *added_leaf):
+        cdef int i = self.find_index(key)
+        cdef list new_array
+        if i >= 0:
+            if self._array[i+1] == val:
+                return self
+            new_array = self._array[:]
+            new_array[i+1] = val
+        else:
+            if len(self._array) > HASHTABLE_THRESHOLD:
+                return self.create_ht(self._array).assoc(0, hash, key, val, added_leaf)
+            added_leaf[0] = True
+            new_array = self._array + [key, val]
+        return SmallArrayNode(new_array)
+
+    cdef Node tassoc(self, bint edit, uint32_t shift, uint32_t hash, key, val, bint *added_leaf):
+        cdef int i = self.find_index(key)
+        cdef SmallArrayNode editable
+        if i >= 0:
+            if self._array[i+1] == val:
+                return self
+            return self.edit_and_set(edit, i+1, val)
+        else:
+            if len(self._array) > HASHTABLE_THRESHOLD:
+                return self.tcreate_ht(self._array).tassoc(edit, 0, hash,
+                                                           key, val, added_leaf)
+            editable = self.ensure_editable(edit)
+            added_leaf[0] = True
+            editable._array.extend([key, val])
+            return editable
+
+    cdef Node without(self, uint32_t shift, uint32_t hash, key):
+        cdef int i = self.find_index(key)
+        cdef int newlen
+        cdef list newarray
+        if i >= 0:
+            newlen = len(self._array) - 2
+            if not newlen:
+                return EMPTY_SMALL_NODE
+            newarray = self._array[:]
+            del newarray[i:i+2]
+            return SmallArrayNode(newarray)
+        return self
+
+    cdef Node twithout(self, bint edit, uint32_t shift, uint32_t hash, key, bint *removed_leaf):
+        cdef int i = self.find_index(key)
+        cdef SmallArrayNode editable
+        if i >= 0:
+            editable = self.ensure_editable(edit)
+            removed_leaf[0] = True
+            del editable._array[i:i+2]
+            return editable
+        return self
+    
+    cdef SmallArrayNode edit_and_set(self, bint edit, int i, a):
+        cdef SmallArrayNode editable = self.ensure_editable(edit)
+        editable._array[i] = a
+        return editable
+    
+    cdef SmallArrayNode ensure_editable(self, bint editable):
+        if self._editable == editable:
+            return self
+        return SmallArrayNode(self._array[:], edit=editable)
+    
+    cdef find(self, uint32_t shift, uint32_t hash, key, not_found):
+        cdef int i = self.find_index(key)
+        if i >= 0:
+            return self._array[i+1]
+        return not_found
     
     cdef NodeIter _iter(self, key_val_item_t kvi):
         return NodeIter(self._array, kvi)

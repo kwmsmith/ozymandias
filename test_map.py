@@ -190,3 +190,31 @@ def test_transient_persistent():
         len(tm)
     with pytest.raises(RuntimeError):
         tm[1]
+
+def test_small_maps_persistent():
+    m = phm()
+    strs = tuple(map(str, range(1000, 1000+7)))
+    for si in strs:
+        assert si not in m
+        m = m.assoc(si, si)
+        assert si in m and m[si] == si
+    assert m == phm((si, si) for si in strs)
+    for si in strs:
+        m = m.dissoc(si)
+        assert si not in m
+    assert m == phm()
+
+def test_small_maps_transient():
+    tm = phm().transient()
+    strs = tuple(map(str, range(1000, 1000+7)))
+    for si in strs:
+        assert si not in tm
+        tm = tm.tassoc(si, si)
+        assert si in tm and tm[si] == si
+    m = tm.persistent()
+    assert m == phm((si, si) for si in strs)
+    tm = m.transient()
+    for si in strs:
+        tm = tm.tdissoc(si)
+        assert si not in tm
+    assert tm.persistent() == phm()
