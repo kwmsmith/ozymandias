@@ -1,7 +1,7 @@
 import pytest
 
 import collections
-from map import map as phm, APersistentMap, PersistentHashMap
+from ozymandias.map import map as phm, APersistentMap, PersistentHashMap
 
 def test_mapping_register():
     assert issubclass(APersistentMap, collections.Mapping)

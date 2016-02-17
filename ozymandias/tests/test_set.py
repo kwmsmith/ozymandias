@@ -1,7 +1,7 @@
 import pytest
 
 import collections
-from set import set as pset, APersistentSet, PersistentHashSet
+from ozymandias.set import set as pset, APersistentSet, PersistentHashSet
 
 N = 4 * 32**3
 

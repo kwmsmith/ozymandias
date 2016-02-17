@@ -6,8 +6,8 @@ from six.moves import range, xrange
 
 import collections
 
-import vector
-from vector import vec, TransientVector
+import ozymandias.vector as vector
+from ozymandias.vector import vec, TransientVector
 from random import shuffle
 
 def test_sequence_register():
